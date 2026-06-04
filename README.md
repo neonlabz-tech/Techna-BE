@@ -31,6 +31,32 @@
 $ yarn install
 ```
 
+## Environment
+
+Copy `.env.example` to `.env` and fill in the Cloudflare R2 values before using the storage service.
+
+Required keys:
+
+- `PORT`
+- `MONGODB_URI`
+- `CLOUDFLARE_R2_ACCOUNT_ID`
+- `CLOUDFLARE_R2_ACCESS_KEY_ID`
+- `CLOUDFLARE_R2_SECRET_ACCESS_KEY`
+- `CLOUDFLARE_R2_BUCKET_NAME`
+
+Optional keys:
+
+- `CLOUDFLARE_R2_ENDPOINT`
+- `CLOUDFLARE_R2_PUBLIC_BASE_URL`
+
+If `CLOUDFLARE_R2_ENDPOINT` is not set, the app derives it from `CLOUDFLARE_R2_ACCOUNT_ID` as `https://<accountId>.r2.cloudflarestorage.com`.
+
+Storage prefixes used by the integration:
+
+- `profile-photos/`
+- `qr-images/`
+- `notes/`
+
 ## Compile and run the project
 
 ```bash
