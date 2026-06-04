@@ -6,14 +6,19 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AttendanceModule } from './attendance/attendance.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { validateEnvironment } from './config/env.validation';
 import { ModulesModule } from './modules/modules.module';
 import { PaymentsModule } from './payments/payments.module';
+import { StorageModule } from './storage/storage.module';
 import { StudentsModule } from './students/students.module';
-import { TeachersModule } from './teachers/teachers.module';
+import { TeacherModule } from './teachers/teacher.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validate: validateEnvironment,
+    }),
 
     MongooseModule.forRootAsync({
       inject: [ConfigService],
@@ -25,11 +30,12 @@ import { TeachersModule } from './teachers/teachers.module';
     }),
 
     StudentsModule,
-    TeachersModule,
+    TeacherModule,
     ModulesModule,
     AttendanceModule,
     DashboardModule,
     PaymentsModule,
+    StorageModule,
   ],
   controllers: [AppController],
   providers: [AppService],
