@@ -7,5 +7,4 @@ export class CreateTeacherDto {
   experience: string;
   address: string;
   joinDate: string;
-  status: string;
-}
+  status?: 'active' | 'inactive';}
