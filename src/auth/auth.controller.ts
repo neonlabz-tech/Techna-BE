@@ -55,11 +55,4 @@ export class AuthController {
   studentOnly() {
     return { message: 'Welcome, Student!' };
   }
-
-  // ─── POST /auth/seed   (creates test student & teacher — dev only) ──────────
-  @Post('seed')
-  @HttpCode(HttpStatus.CREATED)
-  async seed() {
-    return this.authService.seed();
-  }
 }

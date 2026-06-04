@@ -11,18 +11,29 @@ export class AuthService {
   constructor(
     private jwtService: JwtService,
     private configService: ConfigService,
+    // Inject Mongoose models for Student and Teacher collections
     @InjectModel('Student') private studentModel: Model<any>,
     @InjectModel('Teacher') private teacherModel: Model<any>,
   ) {}
 
+  /**
+   * Authenticates a user by email and password.
+   * Checks admin credentials first (env-based), then looks up
+   * the user in the Student and Teacher collections respectively.
+   * Returns a signed JWT and the resolved role on success.
+   */
   async login(email: string, password: string) {
+    // Normalize email to avoid case/whitespace mismatches
     const normalizedEmail = email.toLowerCase().trim();
 
-    // 1. Check admin credentials first (plain-text env compare — admin not stored in DB)
+    // ── Admin check ──────────────────────────────────────────────────────────
+    // Admin is not stored in the database; credentials come from environment
+    // variables so there is no hash comparison — plain-text equality only.
     const adminEmail = this.configService.get<string>('ADMIN_EMAIL');
     const adminPassword = this.configService.get<string>('ADMIN_PASSWORD');
 
     if (normalizedEmail === adminEmail && password === adminPassword) {
+      // Issue a JWT with the ADMIN role and return immediately
       const token = this.jwtService.sign({
         sub: 'admin',
         email: normalizedEmail,
@@ -31,28 +42,35 @@ export class AuthService {
       return { access_token: token, role: Role.ADMIN };
     }
 
-    // 2. Try to find user in students
+    // ── Database lookup ───────────────────────────────────────────────────────
+    // Try students first; fall back to teachers if not found.
+    // `.lean()` returns a plain JS object instead of a Mongoose document
+    // for better performance since we only need to read fields here.
     let user = await this.studentModel.findOne({ email: normalizedEmail }).lean();
     let role: Role = Role.STUDENT;
 
-    // 3. If not found in students, try teachers
     if (!user) {
+      // Not a student — check the teachers collection
       user = await this.teacherModel.findOne({ email: normalizedEmail }).lean();
       role = Role.TEACHER;
     }
 
-    // 4. Still not found — invalid credentials
+    // No matching user found in either collection
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // 5. Verify hashed password
+    // ── Password verification ─────────────────────────────────────────────────
+    // Compare the submitted plain-text password against the bcrypt hash
+    // stored in the database. bcrypt.compare is timing-safe.
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // 6. Sign JWT with role payload
+    // ── JWT signing ───────────────────────────────────────────────────────────
+    // Embed the user's MongoDB _id, email, and resolved role in the token
+    // payload so downstream guards and decorators can identify the caller.
     const token = this.jwtService.sign({
       sub: user._id,
       email: user.email,
@@ -63,60 +81,10 @@ export class AuthService {
   }
 
   /**
-   * Helper used by seeds / registration endpoints to hash passwords.
+   * Hashes a plain-text password using bcrypt with a cost factor of 10.
+   * Intended for use in registration endpoints.
    */
   async hashPassword(plain: string): Promise<string> {
     return bcrypt.hash(plain, 10);
-  }
-
-  /**
-   * DEV ONLY — seeds one test student and one test teacher.
-   * Call POST /auth/seed once then remove or guard it in production.
-   */
-  async seed() {
-    const hashedPassword = await bcrypt.hash('Test@1234', 10);
-
-    const studentExists = await this.studentModel.findOne({ email: 'student@techna.com' });
-    if (!studentExists) {
-      await this.studentModel.create({
-        studentId: 'STU001',
-        qrToken: 'QR-STU001-TOKEN',
-        name: 'Test Student',
-        email: 'student@techna.com',
-        password: hashedPassword,
-        phone: '0700000001',
-        address: '123 Main St',
-        dob: '2000-01-01',
-        batch: 'Batch-2024',
-        modules: [],
-        status: 'approved',
-        enrolledAt: new Date().toISOString(),
-      });
-    }
-
-    const teacherExists = await this.teacherModel.findOne({ email: 'teacher@techna.com' });
-    if (!teacherExists) {
-      await this.teacherModel.create({
-        name: 'Test Teacher',
-        email: 'teacher@techna.com',
-        password: hashedPassword,
-        phone: '0700000002',
-        subject: 'Mathematics',
-        qualification: 'B.Sc Mathematics',
-        experience: '5 years',
-        address: '456 School Rd',
-        joinDate: new Date().toISOString(),
-        status: 'active',
-      });
-    }
-
-    return {
-      message: 'Seed complete',
-      credentials: {
-        student: { email: 'student@techna.com', password: 'Test@1234' },
-        teacher: { email: 'teacher@techna.com', password: 'Test@1234' },
-        admin: { email: 'admin@techna.com (from .env)', password: 'Admin@1234 (from .env)' },
-      },
-    };
   }
 }
