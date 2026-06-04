@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
 import {
-  SchoolModule,
+  Module,
   SchoolModuleDocument,
 } from './schemas/module.schema';
 
@@ -13,22 +13,22 @@ import { UpdateModuleDto } from './dto/update-module.dto';
 @Injectable()
 export class ModulesService {
   constructor(
-    @InjectModel(SchoolModule.name)
+    @InjectModel(Module.name)
     private readonly moduleModel: Model<SchoolModuleDocument>,
   ) {}
 
-  // ─── CREATE ─────────────────────────
+  // CREATE
   async create(createModuleDto: CreateModuleDto) {
     const newModule = new this.moduleModel(createModuleDto);
     return newModule.save();
   }
 
-  // ─── FIND ALL ───────────────────────
+  // FIND ALL
   async findAll() {
     return this.moduleModel.find().sort({ createdAt: -1 });
   }
 
-  // ─── FIND ONE ───────────────────────
+  // FIND ONE
   async findOne(id: string) {
     const module = await this.moduleModel.findById(id);
 
@@ -39,12 +39,15 @@ export class ModulesService {
     return module;
   }
 
-  // ─── UPDATE ─────────────────────────
+  // UPDATE
   async update(id: string, updateModuleDto: UpdateModuleDto) {
     const updatedModule = await this.moduleModel.findByIdAndUpdate(
       id,
       updateModuleDto,
-      { new: true, runValidators: true },
+      {
+        new: true,
+        runValidators: true,
+      },
     );
 
     if (!updatedModule) {
@@ -54,7 +57,7 @@ export class ModulesService {
     return updatedModule;
   }
 
-  // ─── DELETE ─────────────────────────
+  // DELETE
   async remove(id: string) {
     const deletedModule = await this.moduleModel.findByIdAndDelete(id);
 
