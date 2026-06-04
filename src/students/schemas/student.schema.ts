@@ -18,6 +18,9 @@ export class Student {
   email: string;
 
   @Prop({ required: true })
+  password: string;                                     // ← ADD THIS
+
+  @Prop({ required: true })
   phone: string;
 
   @Prop({ required: true })
