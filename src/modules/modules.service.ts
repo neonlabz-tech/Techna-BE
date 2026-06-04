@@ -2,7 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
-import { Module, SchoolModuleDocument } from './schemas/module.schema';
+import {
+  Module,
+  SchoolModuleDocument,
+} from './schemas/module.schema';
+
 import { CreateModuleDto } from './dto/create-module.dto';
 import { UpdateModuleDto } from './dto/update-module.dto';
 import {
@@ -17,6 +21,7 @@ export class ModulesService {
     private readonly moduleModel: Model<SchoolModuleDocument>,
   ) {}
 
+  // CREATE
   async create(createModuleDto: CreateModuleDto) {
     try {
       const newModule = new this.moduleModel(createModuleDto);
@@ -28,6 +33,7 @@ export class ModulesService {
     }
   }
 
+  // FIND ALL
   async findAll() {
     try {
       return await this.moduleModel.find().sort({ createdAt: -1 });
@@ -38,6 +44,7 @@ export class ModulesService {
     }
   }
 
+  // FIND ONE
   async findOne(id: string) {
     try {
       const module = await this.moduleModel.findById(id);
@@ -57,6 +64,7 @@ export class ModulesService {
     }
   }
 
+  // UPDATE
   async update(id: string, updateModuleDto: UpdateModuleDto) {
     try {
       const updatedModule = await this.moduleModel.findByIdAndUpdate(
@@ -80,6 +88,7 @@ export class ModulesService {
     }
   }
 
+  // DELETE
   async remove(id: string) {
     try {
       const deletedModule = await this.moduleModel.findByIdAndDelete(id);
