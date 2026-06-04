@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { Attendance, AttendanceSchema } from './schemas/attendance.schema';
-import { Student, StudentSchema } from '../students/schemas/student.schema';
 import { AttendanceController } from './attendance.controller';
 import { AttendanceService } from './attendance.service';
+import { Attendance, AttendanceSchema } from './schemas/attendance.schema';
+import { Student, StudentSchema } from '../students/schemas/student.schema';
 
 @Module({
   imports: [
