@@ -4,9 +4,12 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
+
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import * as bcrypt from 'bcryptjs';
 import * as QRCode from 'qrcode';
+
 import { Student, StudentDocument } from './schemas/student.schema';
 
 @Injectable()
@@ -16,7 +19,77 @@ export class StudentsService {
     private readonly studentModel: Model<StudentDocument>,
   ) {}
 
-  async approveStudent(id: string): Promise<Student> {
+  // ─────────────────────────────
+  // GET ALL STUDENTS
+  // ─────────────────────────────
+  async findAll() {
+    return this.studentModel.find().select('-password').lean();
+  }
+
+  // ─────────────────────────────
+  // GET SINGLE STUDENT
+  // ─────────────────────────────
+  async findOne(id: string) {
+    const student = await this.studentModel
+      .findById(id)
+      .select('-password')
+      .lean();
+
+    if (!student) throw new NotFoundException('Student not found');
+
+    return student;
+  }
+
+  // ─────────────────────────────
+  // CREATE STUDENT
+  // ─────────────────────────────
+  async create(data: any) {
+    if (data.password) {
+      data.password = await bcrypt.hash(data.password, 10);
+    }
+
+    const student = await this.studentModel.create(data);
+
+    const { password, ...result } = student.toObject();
+    return result;
+  }
+
+  // ─────────────────────────────
+  // UPDATE STUDENT
+  // ─────────────────────────────
+  async update(id: string, data: any) {
+    if (data.password) {
+      data.password = await bcrypt.hash(data.password, 10);
+    }
+
+    const student = await this.studentModel
+      .findByIdAndUpdate(id, data, {
+        new: true,
+        runValidators: true,
+      })
+      .select('-password')
+      .lean();
+
+    if (!student) throw new NotFoundException('Student not found');
+
+    return student;
+  }
+
+  // ─────────────────────────────
+  // DELETE STUDENT
+  // ─────────────────────────────
+  async remove(id: string) {
+    const student = await this.studentModel.findByIdAndDelete(id).lean();
+
+    if (!student) throw new NotFoundException('Student not found');
+
+    return { message: 'Student deleted successfully' };
+  }
+
+  // ─────────────────────────────
+  // APPROVE STUDENT
+  // ─────────────────────────────
+  async approveStudent(id: string) {
     const student = await this.findStudentByIdOrStudentId(id);
 
     if (student.status !== 'approved') {
@@ -28,7 +101,10 @@ export class StudentsService {
     return this.generateStudentQrCode(student.studentId);
   }
 
-  async generateStudentQrCode(studentId: string): Promise<Student> {
+  // ─────────────────────────────
+  // GENERATE QR CODE
+  // ─────────────────────────────
+  async generateStudentQrCode(studentId: string) {
     if (!studentId?.trim()) {
       throw new BadRequestException('studentId is required');
     }
@@ -45,14 +121,14 @@ export class StudentsService {
       );
     }
 
-    if (student.qrCode) {
-      return student;
-    }
-
     if (!student.name?.trim() || !student.email?.trim()) {
       throw new BadRequestException(
-        'Student name and email are required for QR code generation',
+        'Student name and email are required for QR generation',
       );
+    }
+
+    if (student.qrCode) {
+      return student;
     }
 
     const qrPayload = {
@@ -75,23 +151,19 @@ export class StudentsService {
     }
 
     const updatedStudent = await this.studentModel
-      .findOneAndUpdate(
-        {
-          _id: student._id,
-          $or: [
-            { qrCode: { $exists: false } },
-            { qrCode: null },
-            { qrCode: '' },
-          ],
-        },
+      .findByIdAndUpdate(
+        student._id,
         { $set: { qrCode } },
         { new: true },
       )
       .exec();
 
-    return updatedStudent ?? this.findStudentByIdOrStudentId(student.studentId);
+    return updatedStudent;
   }
 
+  // ─────────────────────────────
+  // HELPER: FIND STUDENT
+  // ─────────────────────────────
   private async findStudentByIdOrStudentId(id: string): Promise<StudentDocument> {
     if (!id?.trim()) {
       throw new BadRequestException('Student identifier is required');

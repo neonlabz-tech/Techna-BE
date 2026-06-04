@@ -4,19 +4,24 @@ import { MongooseModule } from '@nestjs/mongoose';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+
 import { AttendanceModule } from './attendance/attendance.module';
-import { validateEnvironment } from './config/env.validation';
 import { ModulesModule } from './modules/modules.module';
 import { PaymentsModule } from './payments/payments.module';
 import { StorageModule } from './storage/storage.module';
 import { StudentsModule } from './students/students.module';
-import { TeacherModule } from './teachers/teacher.module';
+import { TeachersModule } from './teachers/teachers.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
 
     MongooseModule.forRootAsync({
+      imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         uri:
@@ -26,10 +31,11 @@ import { TeacherModule } from './teachers/teacher.module';
     }),
 
     StudentsModule,
-    TeacherModule,
+    TeachersModule,
     ModulesModule,
     AttendanceModule,
     PaymentsModule,
+    AuthModule,
     StorageModule,
   ],
   controllers: [AppController],
