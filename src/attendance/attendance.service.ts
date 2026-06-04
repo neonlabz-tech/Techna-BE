@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { isValidObjectId, Model } from 'mongoose';
+
 import { Student } from '../students/schemas/student.schema';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { AttendanceReportQueryDto } from './dto/report-query.dto';
@@ -29,15 +30,6 @@ type AttendanceReportItem = {
 };
 
 const ATTENDANCE_STATUSES = ['present', 'absent'] as const;
-
-const UPDATABLE_ATTENDANCE_FIELDS = [
-  'studentId',
-  'moduleId',
-  'moduleName',
-  'date',
-  'status',
-  'markedAt',
-] as const;
 
 @Injectable()
 export class AttendanceService {
@@ -71,13 +63,17 @@ export class AttendanceService {
   async findOne(id: string): Promise<AttendanceDocument> {
     this.validateObjectId(id);
 
-    const attendance = await this.attendanceModel.findById(id).exec();
+    const record = await this.attendanceModel.findById(id).exec();
 
-    if (!attendance) {
-      throw new NotFoundException(`Attendance record with ID ${id} not found`);
+    if (!record) {
+      throw new NotFoundException('Attendance record not found');
     }
 
-    return attendance;
+    return record;
+  }
+
+  async findByStudent(studentId: string): Promise<AttendanceDocument[]> {
+    return this.attendanceModel.find({ studentId }).exec();
   }
 
   async update(
@@ -89,27 +85,27 @@ export class AttendanceService {
 
     await this.ensureUpdateDoesNotCreateDuplicate(id, updateAttendanceDto);
 
-    const attendance = await this.attendanceModel
+    const updated = await this.attendanceModel
       .findByIdAndUpdate(id, updateAttendanceDto, {
-        returnDocument: 'after',
+        new: true,
         runValidators: true,
       })
       .exec();
 
-    if (!attendance) {
-      throw new NotFoundException(`Attendance record with ID ${id} not found`);
+    if (!updated) {
+      throw new NotFoundException('Attendance record not found');
     }
 
-    return attendance;
+    return updated;
   }
 
   async remove(id: string): Promise<void> {
     this.validateObjectId(id);
 
-    const attendance = await this.attendanceModel.findByIdAndDelete(id).exec();
+    const deleted = await this.attendanceModel.findByIdAndDelete(id).exec();
 
-    if (!attendance) {
-      throw new NotFoundException(`Attendance record with ID ${id} not found`);
+    if (!deleted) {
+      throw new NotFoundException('Attendance record not found');
     }
   }
 
@@ -179,14 +175,6 @@ export class AttendanceService {
         };
       });
 
-      const totalPresent = attendanceRecords.filter(
-        (record) => record.status === 'present',
-      ).length;
-
-      const totalAbsent = attendanceRecords.filter(
-        (record) => record.status === 'absent',
-      ).length;
-
       return {
         filters: {
           studentId: query.studentId ?? null,
@@ -199,8 +187,8 @@ export class AttendanceService {
         summary: {
           totalStudents: groupedStudents.length,
           totalRecords: attendanceRecords.length,
-          present: totalPresent,
-          absent: totalAbsent,
+          present: attendanceRecords.filter((r) => r.status === 'present').length,
+          absent: attendanceRecords.filter((r) => r.status === 'absent').length,
         },
         students: groupedStudents,
       };
@@ -218,86 +206,45 @@ export class AttendanceService {
     }
   }
 
-  private validateCreatePayload(createAttendanceDto: CreateAttendanceDto): void {
-    if (
-      !createAttendanceDto ||
-      typeof createAttendanceDto !== 'object' ||
-      Array.isArray(createAttendanceDto)
-    ) {
-      throw new BadRequestException(
-        'Attendance create payload must be an object',
-      );
-    }
-
-    const createFields = Object.keys(createAttendanceDto);
-    const invalidField = createFields.find(
-      (field) =>
-        !UPDATABLE_ATTENDANCE_FIELDS.includes(
-          field as (typeof UPDATABLE_ATTENDANCE_FIELDS)[number],
-        ),
-    );
-
-    if (invalidField) {
-      throw new BadRequestException(
-        `Field "${invalidField}" cannot be created on attendance records`,
-      );
-    }
-
-    this.validateRequiredString(createAttendanceDto.studentId, 'studentId');
-    this.validateRequiredString(createAttendanceDto.moduleId, 'moduleId');
-    this.validateRequiredString(createAttendanceDto.moduleName, 'moduleName');
-    this.validateRequiredString(createAttendanceDto.date, 'date');
-    this.validateRequiredString(createAttendanceDto.markedAt, 'markedAt');
-    this.validateStatus(createAttendanceDto.status);
-  }
-
   private validateObjectId(id: string): void {
     if (!isValidObjectId(id)) {
-      throw new BadRequestException('Invalid attendance record ID');
+      throw new BadRequestException('Invalid ID');
     }
   }
 
-  private validateUpdatePayload(updateAttendanceDto: UpdateAttendanceDto): void {
-    if (
-      !updateAttendanceDto ||
-      typeof updateAttendanceDto !== 'object' ||
-      Array.isArray(updateAttendanceDto)
-    ) {
-      throw new BadRequestException(
-        'Attendance update payload must be an object',
-      );
+  private validateCreatePayload(dto: CreateAttendanceDto): void {
+    if (!dto || typeof dto !== 'object' || Array.isArray(dto)) {
+      throw new BadRequestException('Invalid payload');
     }
 
-    const updateFields = Object.keys(updateAttendanceDto);
+    this.validateRequiredString(dto.studentId, 'studentId');
+    this.validateRequiredString(dto.moduleId, 'moduleId');
+    this.validateRequiredString(dto.moduleName, 'moduleName');
+    this.validateRequiredString(dto.date, 'date');
+    this.validateRequiredString(dto.markedAt, 'markedAt');
+    this.validateStatus(dto.status);
+  }
 
-    if (updateFields.length === 0) {
+  private validateUpdatePayload(dto: UpdateAttendanceDto): void {
+    if (!dto || typeof dto !== 'object' || Array.isArray(dto)) {
+      throw new BadRequestException('Invalid payload');
+    }
+
+    if (Object.keys(dto).length === 0) {
       throw new BadRequestException('At least one attendance field is required');
     }
 
-    const invalidField = updateFields.find(
-      (field) =>
-        !UPDATABLE_ATTENDANCE_FIELDS.includes(
-          field as (typeof UPDATABLE_ATTENDANCE_FIELDS)[number],
-        ),
-    );
-
-    if (invalidField) {
-      throw new BadRequestException(
-        `Field "${invalidField}" cannot be updated on attendance records`,
-      );
-    }
-
-    this.validateOptionalString(updateAttendanceDto.studentId, 'studentId');
-    this.validateOptionalString(updateAttendanceDto.moduleId, 'moduleId');
-    this.validateOptionalString(updateAttendanceDto.moduleName, 'moduleName');
-    this.validateOptionalString(updateAttendanceDto.date, 'date');
-    this.validateOptionalString(updateAttendanceDto.markedAt, 'markedAt');
-    this.validateStatus(updateAttendanceDto.status);
+    this.validateOptionalString(dto.studentId, 'studentId');
+    this.validateOptionalString(dto.moduleId, 'moduleId');
+    this.validateOptionalString(dto.moduleName, 'moduleName');
+    this.validateOptionalString(dto.date, 'date');
+    this.validateOptionalString(dto.markedAt, 'markedAt');
+    this.validateStatus(dto.status);
   }
 
-  private validateStatus(status: AttendanceStatus | undefined): void {
-    if (status !== undefined && !ATTENDANCE_STATUSES.includes(status)) {
-      throw new BadRequestException('Status must be either present or absent');
+  private validateStatus(status?: AttendanceStatus): void {
+    if (status && !ATTENDANCE_STATUSES.includes(status)) {
+      throw new BadRequestException('Status must be present or absent');
     }
   }
 
@@ -313,49 +260,37 @@ export class AttendanceService {
     }
   }
 
-  private async ensureUpdateDoesNotCreateDuplicate(
-    id: string,
-    updateAttendanceDto: UpdateAttendanceDto,
-  ): Promise<void> {
-    const changesAttendanceIdentity =
-      updateAttendanceDto.studentId !== undefined ||
-      updateAttendanceDto.moduleId !== undefined ||
-      updateAttendanceDto.date !== undefined;
-
-    if (!changesAttendanceIdentity) {
-      return;
-    }
-
-    const currentAttendance = await this.findOne(id);
-    const studentId =
-      updateAttendanceDto.studentId ?? currentAttendance.studentId;
-    const moduleId =
-      updateAttendanceDto.moduleId ?? currentAttendance.moduleId;
-    const date = updateAttendanceDto.date ?? currentAttendance.date;
-
-    await this.ensureAttendanceDoesNotExist(studentId, moduleId, date, id);
-  }
-
   private async ensureAttendanceDoesNotExist(
     studentId: string,
     moduleId: string,
     date: string,
     excludedId?: string,
   ): Promise<void> {
-    const duplicateAttendance = await this.attendanceModel
-      .findOne({
-        studentId,
-        moduleId,
-        date,
-        ...(excludedId ? { _id: { $ne: excludedId } } : {}),
-      })
-      .exec();
+    const exists = await this.attendanceModel.findOne({
+      studentId,
+      moduleId,
+      date,
+      ...(excludedId ? { _id: { $ne: excludedId } } : {}),
+    });
 
-    if (duplicateAttendance) {
+    if (exists) {
       throw new ConflictException(
-        'Attendance record already exists for this student, module, and date',
+        'Attendance already exists for this student/module/date',
       );
     }
+  }
+
+  private async ensureUpdateDoesNotCreateDuplicate(
+    id: string,
+    dto: UpdateAttendanceDto,
+  ): Promise<void> {
+    const current = await this.findOne(id);
+
+    const studentId = dto.studentId ?? current.studentId;
+    const moduleId = dto.moduleId ?? current.moduleId;
+    const date = dto.date ?? current.date;
+
+    await this.ensureAttendanceDoesNotExist(studentId, moduleId, date, id);
   }
 
   private buildDateFilter(
