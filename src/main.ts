@@ -1,31 +1,39 @@
+import * as dns from 'dns';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import { AppModule } from './app.module';
+
+// DNS config (helps with MongoDB / network resolution issues)
+dns.setServers(['8.8.8.8', '8.8.4.4']);
+dns.setDefaultResultOrder('ipv4first');
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Enable CORS for frontend connections
+  // CORS (safe for frontend + production flexible)
   app.enableCors({
     origin: '*',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
 
-  // Global validation pipe — strips unknown props & validates DTOs
+  // Global validation pipe (DTO validation)
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,
+      whitelist: true, // remove unknown fields
       forbidNonWhitelisted: false,
-      transform: true,
+      transform: true, // auto transform types
     }),
   );
 
   // Global API prefix
   app.setGlobalPrefix('api');
 
-  const port = process.env.PORT ?? 4000;
+  const port = Number(process.env.PORT) || 4000;
+
   await app.listen(port);
+
   console.log(`🚀 Techna API running on http://localhost:${port}/api`);
 }
+
 bootstrap();

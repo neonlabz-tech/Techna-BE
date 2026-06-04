@@ -1,39 +1,72 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Module as SchoolModule } from './schemas/module.schema';
+
+import {
+  Module,
+  SchoolModuleDocument,
+} from './schemas/module.schema';
+
+import { CreateModuleDto } from './dto/create-module.dto';
+import { UpdateModuleDto } from './dto/update-module.dto';
 
 @Injectable()
 export class ModulesService {
   constructor(
-    @InjectModel(SchoolModule.name) private moduleModel: Model<any>,
+    @InjectModel(Module.name)
+    private readonly moduleModel: Model<SchoolModuleDocument>,
   ) {}
 
+  // CREATE
+  async create(createModuleDto: CreateModuleDto) {
+    const newModule = new this.moduleModel(createModuleDto);
+    return newModule.save();
+  }
+
+  // FIND ALL
   async findAll() {
-    return this.moduleModel.find().lean();
+    return this.moduleModel.find().sort({ createdAt: -1 });
   }
 
+  // FIND ONE
   async findOne(id: string) {
-    const mod = await this.moduleModel.findById(id).lean();
-    if (!mod) throw new NotFoundException('Module not found');
-    return mod;
+    const module = await this.moduleModel.findById(id);
+
+    if (!module) {
+      throw new NotFoundException('Module not found');
+    }
+
+    return module;
   }
 
-  async create(data: any) {
-    return this.moduleModel.create(data);
+  // UPDATE
+  async update(id: string, updateModuleDto: UpdateModuleDto) {
+    const updatedModule = await this.moduleModel.findByIdAndUpdate(
+      id,
+      updateModuleDto,
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
+
+    if (!updatedModule) {
+      throw new NotFoundException('Module not found');
+    }
+
+    return updatedModule;
   }
 
-  async update(id: string, data: any) {
-    const mod = await this.moduleModel
-      .findByIdAndUpdate(id, data, { new: true, runValidators: true })
-      .lean();
-    if (!mod) throw new NotFoundException('Module not found');
-    return mod;
-  }
-
+  // DELETE
   async remove(id: string) {
-    const mod = await this.moduleModel.findByIdAndDelete(id).lean();
-    if (!mod) throw new NotFoundException('Module not found');
-    return { message: 'Module deleted successfully' };
+    const deletedModule = await this.moduleModel.findByIdAndDelete(id);
+
+    if (!deletedModule) {
+      throw new NotFoundException('Module not found');
+    }
+
+    return {
+      message: 'Module deleted successfully',
+    };
   }
 }

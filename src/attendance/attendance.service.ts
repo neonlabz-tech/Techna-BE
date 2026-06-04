@@ -1,23 +1,32 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { Attendance } from './schemas/attendance.schema';
+import { isValidObjectId, Model } from 'mongoose';
 
-@Injectable()
-export class AttendanceService {
-  constructor(
-    @InjectModel(Attendance.name) private attendanceModel: Model<any>,
-  ) {}
+import { Student } from '../students/schemas/student.schema';
+import { CreateAttendanceDto } from './dto/create-attendance.dto';
+import { AttendanceReportQueryDto } from './dto/report-query.dto';
+import { UpdateAttendanceDto } from './dto/update-attendance.dto';
+import {
+  Attendance,
+  AttendanceDocument,
+} from './schemas/attendance.schema';
 
-  async findAll() {
-    return this.attendanceModel.find().lean();
-  }
+type AttendanceStatus = 'present' | 'absent';
 
-  async findByStudent(studentId: string) {
-    return this.attendanceModel.find({ studentId }).lean();
-  }
+type AttendanceReportItem = {
+  id: string;
+  studentId: string;
+  moduleId: string;
+  moduleName: string;
+  date: string;
+  status: AttendanceStatus;
+  markedAt: string;
+};
 
-  async create(data: any) {
-    return this.attendanceModel.create(data);
-  }
-}
+const ATTENDANCE_STATUSES = ['present', 'absent'] as const;

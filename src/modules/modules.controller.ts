@@ -8,7 +8,11 @@ import {
   Param,
   UseGuards,
 } from '@nestjs/common';
+
 import { ModulesService } from './modules.service';
+import { CreateModuleDto } from './dto/create-module.dto';
+import { UpdateModuleDto } from './dto/update-module.dto';
+
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../decorators/roles.decorator';
@@ -19,35 +23,38 @@ import { Role } from '../enums/role.enum';
 export class ModulesController {
   constructor(private readonly modulesService: ModulesService) {}
 
-  // ─── GET /api/modules  (admin + teacher + student) ─────────────────────────
+  // ─── CREATE (Admin only) ─────────────────────────────
+  @Post()
+  @Roles(Role.ADMIN)
+  create(@Body() createModuleDto: CreateModuleDto) {
+    return this.modulesService.create(createModuleDto);
+  }
+
+  // ─── GET ALL (Admin, Teacher, Student) ───────────────
   @Get()
   @Roles(Role.ADMIN, Role.TEACHER, Role.STUDENT)
   findAll() {
     return this.modulesService.findAll();
   }
 
-  // ─── GET /api/modules/:id  (admin + teacher + student) ─────────────────────
+  // ─── GET ONE ─────────────────────────────────────────
   @Get(':id')
   @Roles(Role.ADMIN, Role.TEACHER, Role.STUDENT)
   findOne(@Param('id') id: string) {
     return this.modulesService.findOne(id);
   }
 
-  // ─── POST /api/modules  (admin only) ───────────────────────────────────────
-  @Post()
-  @Roles(Role.ADMIN)
-  create(@Body() body: any) {
-    return this.modulesService.create(body);
-  }
-
-  // ─── PATCH /api/modules/:id  (admin only) ──────────────────────────────────
+  // ─── UPDATE (Admin only) ─────────────────────────────
   @Patch(':id')
   @Roles(Role.ADMIN)
-  update(@Param('id') id: string, @Body() body: any) {
-    return this.modulesService.update(id, body);
+  update(
+    @Param('id') id: string,
+    @Body() updateModuleDto: UpdateModuleDto,
+  ) {
+    return this.modulesService.update(id, updateModuleDto);
   }
 
-  // ─── DELETE /api/modules/:id  (admin only) ─────────────────────────────────
+  // ─── DELETE (Admin only) ─────────────────────────────
   @Delete(':id')
   @Roles(Role.ADMIN)
   remove(@Param('id') id: string) {
