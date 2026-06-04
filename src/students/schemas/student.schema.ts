@@ -11,6 +11,9 @@ export class Student {
   @Prop({ required: true, unique: true })
   qrToken: string;
 
+  @Prop()
+  qrCode?: string;
+
   @Prop({ required: true })
   name: string;
 
