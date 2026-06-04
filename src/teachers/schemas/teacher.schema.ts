@@ -6,7 +6,7 @@ export type TeacherDocument = HydratedDocument<Teacher>;
 @Schema({ timestamps: true })
 export class Teacher {
   @Prop({ required: true })
-  name: string;
+  fullName: string;
 
   @Prop({ required: true, lowercase: true, trim: true })
   email: string;
