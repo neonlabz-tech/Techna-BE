@@ -19,7 +19,9 @@ import { TeacherModule } from './teachers/teacher.module';
     MongooseModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        uri: config.get<string>('MONGODB_URI') || config.get<string>('MONGO_URI'),
+        uri:
+          config.get<string>('MONGODB_URI') ||
+          config.get<string>('MONGO_URI'),
       }),
     }),
 
