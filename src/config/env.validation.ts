@@ -1,6 +1,6 @@
 export interface EnvironmentVariables {
   PORT?: string;
-  MONGODB_URI?: string;
+  MONGO_URI?: string;
   CLOUDFLARE_R2_ACCOUNT_ID?: string;
   CLOUDFLARE_R2_ACCESS_KEY_ID?: string;
   CLOUDFLARE_R2_SECRET_ACCESS_KEY?: string;
@@ -15,8 +15,8 @@ export function validateEnvironment(environment: EnvironmentVariables): Environm
     environment.PORT = '4000';
   }
 
-  if (!environment.MONGODB_URI) {
-    throw new Error('MONGODB_URI is required');
+  if (!environment.MONGO_URI) {
+    throw new Error('MONGO_URI is required');
   }
 
   return environment;

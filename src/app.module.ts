@@ -13,7 +13,10 @@ import { TeachersModule } from './teachers/teachers.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validate: validateEnvironment,
+    }),
     MongooseModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -25,6 +28,7 @@ import { TeachersModule } from './teachers/teachers.module';
     ModulesModule,
     AttendanceModule,
     PaymentsModule,
+    StorageModule,
   ],
   controllers: [AppController],
   providers: [AppService],
