@@ -20,7 +20,9 @@ import { AuthModule } from './auth/auth.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        uri: config.get<string>('MONGO_URI'),
+        uri:
+          config.get<string>('MONGODB_URI') ||
+          config.get<string>('MONGO_URI'),
       }),
     }),
 
