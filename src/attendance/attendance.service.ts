@@ -1,8 +1,5 @@
 import {
-  BadRequestException,
-  ConflictException,
   Injectable,
-  NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { isValidObjectId, Model } from 'mongoose';
@@ -12,6 +9,12 @@ import {
   Attendance,
   AttendanceDocument,
 } from './schemas/attendance.schema';
+import {
+  BadRequestException,
+  NotFoundException,
+  ConflictException,
+  InternalServerErrorException,
+} from '../common/exceptions';
 
 type AttendanceStatus = 'present' | 'absent';
 
@@ -35,64 +38,111 @@ export class AttendanceService {
   async create(
     createAttendanceDto: CreateAttendanceDto,
   ): Promise<AttendanceDocument> {
-    this.validateCreatePayload(createAttendanceDto);
-    await this.ensureAttendanceDoesNotExist(
-      createAttendanceDto.studentId,
-      createAttendanceDto.moduleId,
-      createAttendanceDto.date,
-    );
+    try {
+      this.validateCreatePayload(createAttendanceDto);
+      await this.ensureAttendanceDoesNotExist(
+        createAttendanceDto.studentId,
+        createAttendanceDto.moduleId,
+        createAttendanceDto.date,
+      );
 
-    const attendance = new this.attendanceModel(createAttendanceDto);
+      const attendance = new this.attendanceModel(createAttendanceDto);
 
-    return attendance.save();
+      return await attendance.save();
+    } catch (error) {
+      if (error instanceof BadRequestException || 
+          error instanceof ConflictException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to create attendance: ' + (error instanceof Error ? error.message : 'Unknown error'),
+      );
+    }
   }
 
   async findAll(): Promise<AttendanceDocument[]> {
-    return this.attendanceModel.find().exec();
+    try {
+      return await this.attendanceModel.find().exec();
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to fetch attendance records: ' + (error instanceof Error ? error.message : 'Unknown error'),
+      );
+    }
   }
 
   async findOne(id: string): Promise<AttendanceDocument> {
-    this.validateObjectId(id);
+    try {
+      this.validateObjectId(id);
 
-    const attendance = await this.attendanceModel.findById(id).exec();
+      const attendance = await this.attendanceModel.findById(id).exec();
 
-    if (!attendance) {
-      throw new NotFoundException(`Attendance record with ID ${id} not found`);
+      if (!attendance) {
+        throw new NotFoundException(`Attendance record with ID ${id} not found`);
+      }
+
+      return attendance;
+    } catch (error) {
+      if (error instanceof BadRequestException || 
+          error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to fetch attendance: ' + (error instanceof Error ? error.message : 'Unknown error'),
+      );
     }
-
-    return attendance;
   }
 
   async update(
     id: string,
     updateAttendanceDto: UpdateAttendanceDto,
   ): Promise<AttendanceDocument> {
-    this.validateObjectId(id);
-    this.validateUpdatePayload(updateAttendanceDto);
+    try {
+      this.validateObjectId(id);
+      this.validateUpdatePayload(updateAttendanceDto);
 
-    await this.ensureUpdateDoesNotCreateDuplicate(id, updateAttendanceDto);
+      await this.ensureUpdateDoesNotCreateDuplicate(id, updateAttendanceDto);
 
-    const attendance = await this.attendanceModel
-      .findByIdAndUpdate(id, updateAttendanceDto, {
-        returnDocument: 'after',
-        runValidators: true,
-      })
-      .exec();
+      const attendance = await this.attendanceModel
+        .findByIdAndUpdate(id, updateAttendanceDto, {
+          returnDocument: 'after',
+          runValidators: true,
+        })
+        .exec();
 
-    if (!attendance) {
-      throw new NotFoundException(`Attendance record with ID ${id} not found`);
+      if (!attendance) {
+        throw new NotFoundException(`Attendance record with ID ${id} not found`);
+      }
+
+      return attendance;
+    } catch (error) {
+      if (error instanceof BadRequestException || 
+          error instanceof NotFoundException ||
+          error instanceof ConflictException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to update attendance: ' + (error instanceof Error ? error.message : 'Unknown error'),
+      );
     }
-
-    return attendance;
   }
 
   async remove(id: string): Promise<void> {
-    this.validateObjectId(id);
+    try {
+      this.validateObjectId(id);
 
-    const attendance = await this.attendanceModel.findByIdAndDelete(id).exec();
+      const attendance = await this.attendanceModel.findByIdAndDelete(id).exec();
 
-    if (!attendance) {
-      throw new NotFoundException(`Attendance record with ID ${id} not found`);
+      if (!attendance) {
+        throw new NotFoundException(`Attendance record with ID ${id} not found`);
+      }
+    } catch (error) {
+      if (error instanceof BadRequestException || 
+          error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to delete attendance: ' + (error instanceof Error ? error.message : 'Unknown error'),
+      );
     }
   }
 

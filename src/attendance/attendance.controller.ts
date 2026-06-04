@@ -48,7 +48,7 @@ export class AttendanceController {
   }
 
   @Delete(':id')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(HttpStatus.OK)
   async remove(@Param('id') id: string): Promise<void> {
     await this.attendanceService.remove(id);
   }

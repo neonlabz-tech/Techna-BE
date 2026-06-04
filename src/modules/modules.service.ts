@@ -1,10 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
 import { Module, SchoolModuleDocument } from './schemas/module.schema';
 import { CreateModuleDto } from './dto/create-module.dto';
 import { UpdateModuleDto } from './dto/update-module.dto';
+import {
+  NotFoundException,
+  InternalServerErrorException,
+} from '../common/exceptions';
 
 @Injectable()
 export class ModulesService {
@@ -14,47 +18,84 @@ export class ModulesService {
   ) {}
 
   async create(createModuleDto: CreateModuleDto) {
-    const newModule = new this.moduleModel(createModuleDto);
-    return newModule.save();
+    try {
+      const newModule = new this.moduleModel(createModuleDto);
+      return await newModule.save();
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to create module: ' + (error instanceof Error ? error.message : 'Unknown error'),
+      );
+    }
   }
 
   async findAll() {
-    return this.moduleModel.find().sort({ createdAt: -1 });
+    try {
+      return await this.moduleModel.find().sort({ createdAt: -1 });
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to fetch modules: ' + (error instanceof Error ? error.message : 'Unknown error'),
+      );
+    }
   }
 
   async findOne(id: string) {
-    const module = await this.moduleModel.findById(id);
+    try {
+      const module = await this.moduleModel.findById(id);
 
-    if (!module) {
-      throw new NotFoundException('Module not found');
+      if (!module) {
+        throw new NotFoundException('Module not found');
+      }
+
+      return module;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to fetch module: ' + (error instanceof Error ? error.message : 'Unknown error'),
+      );
     }
-
-    return module;
   }
 
   async update(id: string, updateModuleDto: UpdateModuleDto) {
-    const updatedModule = await this.moduleModel.findByIdAndUpdate(
-      id,
-      updateModuleDto,
-      { new: true },
-    );
+    try {
+      const updatedModule = await this.moduleModel.findByIdAndUpdate(
+        id,
+        updateModuleDto,
+        { new: true, runValidators: true },
+      );
 
-    if (!updatedModule) {
-      throw new NotFoundException('Module not found');
+      if (!updatedModule) {
+        throw new NotFoundException('Module not found');
+      }
+
+      return updatedModule;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to update module: ' + (error instanceof Error ? error.message : 'Unknown error'),
+      );
     }
-
-    return updatedModule;
   }
 
   async remove(id: string) {
-    const deletedModule = await this.moduleModel.findByIdAndDelete(id);
+    try {
+      const deletedModule = await this.moduleModel.findByIdAndDelete(id);
 
-    if (!deletedModule) {
-      throw new NotFoundException('Module not found');
+      if (!deletedModule) {
+        throw new NotFoundException('Module not found');
+      }
+
+      return deletedModule;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to delete module: ' + (error instanceof Error ? error.message : 'Unknown error'),
+      );
     }
-
-    return {
-      message: 'Module deleted successfully',
-    };
   }
 }
