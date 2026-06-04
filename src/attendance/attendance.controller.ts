@@ -2,19 +2,21 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
+  Query,
   Request,
   UseGuards,
-  ForbiddenException,
-  HttpCode,
-  HttpStatus,
 } from '@nestjs/common';
 
 import { AttendanceService } from './attendance.service';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
+import { AttendanceReportQueryDto } from './dto/report-query.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 import { AttendanceDocument } from './schemas/attendance.schema';
 
@@ -28,7 +30,6 @@ import { Role } from '../enums/role.enum';
 export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
 
-  // ─── CREATE (Admin, Teacher) ─────────────────────────
   @Post()
   @Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.CREATED)
@@ -38,7 +39,6 @@ export class AttendanceController {
     return this.attendanceService.create(createAttendanceDto);
   }
 
-  // ─── GET ALL (Admin, Teacher) ─────────────────────────
   @Get()
   @Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.OK)
@@ -46,7 +46,24 @@ export class AttendanceController {
     return this.attendanceService.findAll();
   }
 
-  // ─── GET BY ID (Admin, Teacher) ───────────────────────
+  @Get('report')
+  @Roles(Role.ADMIN, Role.TEACHER)
+  @HttpCode(HttpStatus.OK)
+  getReport(@Query() query: AttendanceReportQueryDto) {
+    return this.attendanceService.getReport(query);
+  }
+
+  @Get('student/:studentId')
+  @Roles(Role.ADMIN, Role.TEACHER, Role.STUDENT)
+  @HttpCode(HttpStatus.OK)
+  findByStudent(@Param('studentId') studentId: string, @Request() req: any) {
+    if (req.user.role === Role.STUDENT && req.user.userId !== studentId) {
+      throw new ForbiddenException('You can only view your own attendance');
+    }
+
+    return this.attendanceService.findByStudent(studentId);
+  }
+
   @Get(':id')
   @Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.OK)
@@ -54,28 +71,6 @@ export class AttendanceController {
     return this.attendanceService.findOne(id);
   }
 
-  // ─── GET BY STUDENT (Admin, Teacher, Student self) ────
-  @Get('student/:studentId')
-  @Roles(Role.ADMIN, Role.TEACHER, Role.STUDENT)
-  @HttpCode(HttpStatus.OK)
-  findByStudent(
-    @Param('studentId') studentId: string,
-    @Request() req: any,
-  ) {
-    // student can only see own data
-    if (
-      req.user.role === Role.STUDENT &&
-      req.user.userId !== studentId
-    ) {
-      throw new ForbiddenException(
-        'You can only view your own attendance',
-      );
-    }
-
-    return this.attendanceService.findByStudent(studentId);
-  }
-
-  // ─── UPDATE (Admin, Teacher) ───────────────────────────
   @Patch(':id')
   @Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.OK)
@@ -86,7 +81,6 @@ export class AttendanceController {
     return this.attendanceService.update(id, updateAttendanceDto);
   }
 
-  // ─── DELETE (Admin only recommended) ───────────────────
   @Delete(':id')
   @Roles(Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)

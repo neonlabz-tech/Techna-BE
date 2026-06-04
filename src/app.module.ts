@@ -6,6 +6,9 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
 import { AttendanceModule } from './attendance/attendance.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { validateEnvironment } from './config/env.validation';
+
 import { ModulesModule } from './modules/modules.module';
 import { PaymentsModule } from './payments/payments.module';
 import { StorageModule } from './storage/storage.module';
@@ -18,6 +21,7 @@ import { AuthModule } from './auth/auth.module';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+      validate: validateEnvironment,
     }),
 
     MongooseModule.forRootAsync({
@@ -34,6 +38,7 @@ import { AuthModule } from './auth/auth.module';
     TeachersModule,
     ModulesModule,
     AttendanceModule,
+    DashboardModule,
     PaymentsModule,
     AuthModule,
     StorageModule,
