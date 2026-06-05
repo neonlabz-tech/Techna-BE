@@ -6,16 +6,17 @@ import { Teacher } from './schemas/teacher.schema';
 
 @Injectable()
 export class TeachersService {
-  constructor(
-    @InjectModel(Teacher.name) private teacherModel: Model<any>,
-  ) {}
+  constructor(@InjectModel(Teacher.name) private teacherModel: Model<any>) {}
 
   async findAll() {
     return this.teacherModel.find().select('-password').lean();
   }
 
   async findOne(id: string) {
-    const teacher = await this.teacherModel.findById(id).select('-password').lean();
+    const teacher = await this.teacherModel
+      .findById(id)
+      .select('-password')
+      .lean();
     if (!teacher) throw new NotFoundException('Teacher not found');
     return teacher;
   }

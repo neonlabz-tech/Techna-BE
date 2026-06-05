@@ -46,7 +46,9 @@ export class AuthService {
     // Try students first; fall back to teachers if not found.
     // `.lean()` returns a plain JS object instead of a Mongoose document
     // for better performance since we only need to read fields here.
-    let user = await this.studentModel.findOne({ email: normalizedEmail }).lean();
+    let user = await this.studentModel
+      .findOne({ email: normalizedEmail })
+      .lean();
     let role: Role = Role.STUDENT;
 
     if (!user) {

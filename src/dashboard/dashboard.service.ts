@@ -9,7 +9,8 @@ import { Student } from '../students/schemas/student.schema';
 export class DashboardService {
   constructor(
     @InjectModel(Student.name) private readonly studentModel: Model<Student>,
-    @InjectModel(Attendance.name) private readonly attendanceModel: Model<Attendance>,
+    @InjectModel(Attendance.name)
+    private readonly attendanceModel: Model<Attendance>,
     @InjectModel(Payment.name) private readonly paymentModel: Model<Payment>,
   ) {}
 
@@ -17,23 +18,28 @@ export class DashboardService {
     try {
       const today = new Date().toISOString().split('T')[0];
 
-      const [totalStudents, present, absent, pendingPayments] = await Promise.all([
-        this.studentModel.countDocuments().exec(),
-        this.attendanceModel.countDocuments({ date: today, status: 'present' }).exec(),
-        this.attendanceModel.countDocuments({ date: today, status: 'absent' }).exec(),
-        this.paymentModel
-          .aggregate([
-            { $match: { status: { $in: ['pending', 'overdue'] } } },
-            {
-              $group: {
-                _id: null,
-                count: { $sum: 1 },
-                amount: { $sum: '$amount' },
+      const [totalStudents, present, absent, pendingPayments] =
+        await Promise.all([
+          this.studentModel.countDocuments().exec(),
+          this.attendanceModel
+            .countDocuments({ date: today, status: 'present' })
+            .exec(),
+          this.attendanceModel
+            .countDocuments({ date: today, status: 'absent' })
+            .exec(),
+          this.paymentModel
+            .aggregate([
+              { $match: { status: { $in: ['pending', 'overdue'] } } },
+              {
+                $group: {
+                  _id: null,
+                  count: { $sum: 1 },
+                  amount: { $sum: '$amount' },
+                },
               },
-            },
-          ])
-          .exec(),
-      ]);
+            ])
+            .exec(),
+        ]);
 
       const pending = pendingPayments[0] ?? { count: 0, amount: 0 };
 
@@ -51,7 +57,9 @@ export class DashboardService {
         },
       };
     } catch {
-      throw new InternalServerErrorException('Failed to load dashboard summary');
+      throw new InternalServerErrorException(
+        'Failed to load dashboard summary',
+      );
     }
   }
 }

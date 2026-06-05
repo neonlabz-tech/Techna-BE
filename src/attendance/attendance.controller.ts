@@ -16,6 +16,7 @@ import {
 
 import { AttendanceService } from './attendance.service';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
+import { ScanQrDto } from './dto/scan-qr.dto';
 import { AttendanceReportQueryDto } from './dto/report-query.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 import { AttendanceDocument } from './schemas/attendance.schema';
@@ -26,11 +27,17 @@ import { Roles } from '../decorators/roles.decorator';
 import { Role } from '../enums/role.enum';
 
 @Controller('attendance')
-@UseGuards(JwtAuthGuard, RolesGuard)
 export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
 
+  @Post('scan-qr')
+  @HttpCode(HttpStatus.CREATED)
+  scanQrCode(@Body() scanQrDto: ScanQrDto): Promise<AttendanceDocument> {
+    return this.attendanceService.scanQrAndMarkAttendance(scanQrDto);
+  }
+
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.CREATED)
   create(
@@ -40,6 +47,7 @@ export class AttendanceController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.OK)
   findAll(): Promise<AttendanceDocument[]> {
@@ -47,6 +55,7 @@ export class AttendanceController {
   }
 
   @Get('report')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.OK)
   getReport(@Query() query: AttendanceReportQueryDto) {
@@ -54,6 +63,7 @@ export class AttendanceController {
   }
 
   @Get('student/:studentId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.TEACHER, Role.STUDENT)
   @HttpCode(HttpStatus.OK)
   findByStudent(@Param('studentId') studentId: string, @Request() req: any) {
@@ -65,6 +75,7 @@ export class AttendanceController {
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.OK)
   findOne(@Param('id') id: string): Promise<AttendanceDocument> {
@@ -72,6 +83,7 @@ export class AttendanceController {
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.OK)
   update(
@@ -82,6 +94,7 @@ export class AttendanceController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string): Promise<void> {

@@ -5,9 +5,7 @@ import { Payment } from './schemas/payment.schema';
 
 @Injectable()
 export class PaymentsService {
-  constructor(
-    @InjectModel(Payment.name) private paymentModel: Model<any>,
-  ) {}
+  constructor(@InjectModel(Payment.name) private paymentModel: Model<any>) {}
 
   async findAll() {
     return this.paymentModel.find().lean();

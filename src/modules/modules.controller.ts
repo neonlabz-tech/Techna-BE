@@ -47,10 +47,7 @@ export class ModulesController {
   // ─── UPDATE (Admin only) ─────────────────────────────
   @Patch(':id')
   @Roles(Role.ADMIN)
-  update(
-    @Param('id') id: string,
-    @Body() updateModuleDto: UpdateModuleDto,
-  ) {
+  update(@Param('id') id: string, @Body() updateModuleDto: UpdateModuleDto) {
     return this.modulesService.update(id, updateModuleDto);
   }
 

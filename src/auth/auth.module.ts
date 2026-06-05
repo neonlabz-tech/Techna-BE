@@ -18,7 +18,7 @@ import { Teacher, TeacherSchema } from '../teachers/schemas/teacher.schema';
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET', 'secret'),
         signOptions: {
-          expiresIn: (configService.get<string>('JWT_EXPIRES_IN', '7d')) as any,
+          expiresIn: configService.get<string>('JWT_EXPIRES_IN', '7d') as any,
         },
       }),
     }),

@@ -9,13 +9,15 @@ import { InjectModel } from '@nestjs/mongoose';
 import { isValidObjectId, Model } from 'mongoose';
 
 import { Student } from '../students/schemas/student.schema';
+import {
+  Module as SchoolModule,
+  SchoolModuleDocument,
+} from '../modules/schemas/module.schema';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
+import { ScanQrDto } from './dto/scan-qr.dto';
 import { AttendanceReportQueryDto } from './dto/report-query.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
-import {
-  Attendance,
-  AttendanceDocument,
-} from './schemas/attendance.schema';
+import { Attendance, AttendanceDocument } from './schemas/attendance.schema';
 
 type AttendanceStatus = 'present' | 'absent';
 
@@ -39,6 +41,9 @@ export class AttendanceService {
 
     @InjectModel(Student.name)
     private readonly studentModel: Model<Student>,
+
+    @InjectModel(SchoolModule.name)
+    private readonly moduleModel: Model<SchoolModuleDocument>,
   ) {}
 
   async create(
@@ -53,6 +58,71 @@ export class AttendanceService {
     );
 
     const attendance = new this.attendanceModel(createAttendanceDto);
+    return attendance.save();
+  }
+
+  async scanQrAndMarkAttendance(
+    scanQrDto: ScanQrDto,
+  ): Promise<AttendanceDocument> {
+    this.validateScanQrPayload(scanQrDto);
+
+    // Find student by QR token
+    const student = await this.studentModel.findOne({
+      qrToken: scanQrDto.qrToken.trim(),
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    if (student.status !== 'approved') {
+      throw new BadRequestException('Student is not approved');
+    }
+
+    // Determine moduleId
+    let moduleId = scanQrDto.moduleId?.trim();
+
+    if (!moduleId) {
+      if (!student.modules || student.modules.length === 0) {
+        throw new BadRequestException('Student is not enrolled in any modules');
+      }
+      moduleId = student.modules[0];
+    }
+
+    // Validate moduleId format
+    if (!isValidObjectId(moduleId)) {
+      throw new BadRequestException('Invalid moduleId format');
+    }
+
+    // Fetch module details
+    const module = await this.moduleModel.findById(moduleId);
+
+    if (!module) {
+      throw new NotFoundException('Module not found');
+    }
+
+    // Verify student is enrolled in this module
+    if (!student.modules.includes(moduleId)) {
+      throw new BadRequestException('Student not enrolled in this module');
+    }
+
+    // Generate attendance date (today in YYYY-MM-DD format)
+    const today = new Date().toISOString().split('T')[0];
+
+    // Check for duplicate attendance
+    await this.ensureAttendanceDoesNotExist(student.studentId, moduleId, today);
+
+    // Create attendance record
+    const attendanceData: CreateAttendanceDto = {
+      studentId: student.studentId,
+      moduleId: moduleId,
+      moduleName: module.name,
+      date: today,
+      status: 'present',
+      markedAt: new Date().toISOString(),
+    };
+
+    const attendance = new this.attendanceModel(attendanceData);
     return attendance.save();
   }
 
@@ -187,7 +257,8 @@ export class AttendanceService {
         summary: {
           totalStudents: groupedStudents.length,
           totalRecords: attendanceRecords.length,
-          present: attendanceRecords.filter((r) => r.status === 'present').length,
+          present: attendanceRecords.filter((r) => r.status === 'present')
+            .length,
           absent: attendanceRecords.filter((r) => r.status === 'absent').length,
         },
         students: groupedStudents,
@@ -225,13 +296,27 @@ export class AttendanceService {
     this.validateStatus(dto.status);
   }
 
+  private validateScanQrPayload(dto: ScanQrDto): void {
+    if (!dto || typeof dto !== 'object' || Array.isArray(dto)) {
+      throw new BadRequestException('Invalid payload');
+    }
+
+    this.validateRequiredString(dto.qrToken, 'qrToken');
+
+    if (dto.moduleId !== undefined) {
+      this.validateOptionalString(dto.moduleId, 'moduleId');
+    }
+  }
+
   private validateUpdatePayload(dto: UpdateAttendanceDto): void {
     if (!dto || typeof dto !== 'object' || Array.isArray(dto)) {
       throw new BadRequestException('Invalid payload');
     }
 
     if (Object.keys(dto).length === 0) {
-      throw new BadRequestException('At least one attendance field is required');
+      throw new BadRequestException(
+        'At least one attendance field is required',
+      );
     }
 
     this.validateOptionalString(dto.studentId, 'studentId');
