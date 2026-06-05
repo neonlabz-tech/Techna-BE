@@ -80,11 +80,71 @@ export class AuthService {
     return { access_token: token, role };
   }
 
+  private blacklistedTokens = new Set<string>();
+
+  async studentLogin(email: string, password: string) {
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await this.studentModel.findOne({ email: normalizedEmail }).lean();
+    if (!user) {
+      throw new UnauthorizedException('Invalid student credentials');
+    }
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      throw new UnauthorizedException('Invalid student credentials');
+    }
+    const token = this.jwtService.sign({
+      sub: user._id,
+      email: user.email,
+      role: Role.STUDENT,
+    });
+    return { access_token: token, role: Role.STUDENT };
+  }
+
+  async logout(token: string) {
+    if (token) {
+      this.blacklistedTokens.add(token);
+    }
+    return { message: 'Logged out successfully' };
+  }
+
+  isTokenBlacklisted(token: string): boolean {
+    return this.blacklistedTokens.has(token);
+  }
+
+  async getSession(user: any) {
+    if (user.role === Role.ADMIN) {
+      return {
+        userId: 'admin',
+        email: user.email,
+        role: Role.ADMIN,
+      };
+    } else if (user.role === Role.STUDENT) {
+      const student = await this.studentModel.findById(user.userId).select('-password').lean();
+      if (!student) {
+        throw new UnauthorizedException('Student profile not found');
+      }
+      return {
+        ...student,
+        role: Role.STUDENT,
+      };
+    } else if (user.role === Role.TEACHER) {
+      const teacher = await this.teacherModel.findById(user.userId).select('-password').lean();
+      if (!teacher) {
+        throw new UnauthorizedException('Teacher profile not found');
+      }
+      return {
+        ...teacher,
+        role: Role.TEACHER,
+      };
+    }
+    throw new UnauthorizedException('Invalid user role');
+  }
+
   /**
    * Hashes a plain-text password using bcrypt with a cost factor of 10.
-   * Intended for use in registration endpoints.
+   * Used by registration and password-reset flows.
    */
   async hashPassword(plain: string): Promise<string> {
     return bcrypt.hash(plain, 10);
   }
-}
+}
