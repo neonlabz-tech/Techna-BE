@@ -19,12 +19,14 @@ import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
+    // Config setup (safe + validated)
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
       validate: validateEnvironment,
     }),
 
+    // MongoDB async config (best practice)
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -35,6 +37,7 @@ import { AuthModule } from './auth/auth.module';
       }),
     }),
 
+    // Feature modules
     StudentsModule,
     TeachersModule,
     ExamNoticesModule,
