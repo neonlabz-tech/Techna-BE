@@ -3,7 +3,6 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter, AllExceptionsFilter } from './common/filters';
-import { ResponseInterceptor } from './common/interceptors';
 import { CustomValidationPipe } from './common/pipes';
 
 // DNS config (helps with MongoDB / network resolution issues)
@@ -29,8 +28,7 @@ async function bootstrap() {
     }),
   );
 
-  // Global Interceptors
-  app.useGlobalInterceptors(new ResponseInterceptor());
+  // Global Interceptors are registered via AppModule providers
 
   // Global Exception Filters - Order matters! More specific first
   app.useGlobalFilters(new HttpExceptionFilter(), new AllExceptionsFilter());
