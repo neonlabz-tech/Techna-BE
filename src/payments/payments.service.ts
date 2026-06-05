@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Payment } from './schemas/payment.schema';
 import { Student } from '../students/schemas/student.schema';
 import { Module as SchoolModule } from '../modules/schemas/module.schema';
@@ -32,11 +32,13 @@ export class PaymentsService {
   }
 
   async create(data: CreatePaymentDto) {
-    const student = await this.resolveStudent(data.studentId);
-    const module = await this.resolveModule(data.moduleId);
-    const paidMonth = this.getMonthKey(data.paidDate);
+    const paidDate = this.normalizeDate(data.paidDate);
+    const paidMonth = this.getMonthKey(paidDate);
 
     await this.ensureNoDuplicateMonthlyPayment(data.studentId, data.moduleId, paidMonth);
+
+    const student = await this.resolveStudent(data.studentId);
+    const module = await this.resolveModule(data.moduleId, data.moduleName);
 
     const receiptNo = data.receiptNo?.trim() || (await this.generateUniqueReceiptNo());
     await this.ensureReceiptNoUnique(receiptNo);
@@ -47,7 +49,7 @@ export class PaymentsService {
       moduleId: data.moduleId,
       moduleName: data.moduleName?.trim() || module.name,
       amount: data.amount,
-      paidDate: this.normalizeDate(data.paidDate),
+      paidDate,
       method: data.method,
       status: data.status || 'paid',
       receiptNo,
@@ -117,8 +119,20 @@ export class PaymentsService {
     return student;
   }
 
-  private async resolveModule(moduleId: string) {
-    const module = await this.moduleModel.findById(moduleId).lean();
+  private async resolveModule(moduleId: string, moduleName?: string) {
+    let module: any | null = null;
+
+    if (Types.ObjectId.isValid(moduleId)) {
+      module = await this.moduleModel.findById(moduleId).lean();
+    }
+
+    if (!module) {
+      module = await this.moduleModel.findOne({ moduleId }).lean();
+    }
+
+    if (!module && moduleName?.trim()) {
+      module = await this.moduleModel.findOne({ name: moduleName.trim() }).lean();
+    }
 
     if (!module) {
       throw new NotFoundException('Module not found');
