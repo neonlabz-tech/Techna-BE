@@ -2,7 +2,11 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
-import { Module, SchoolModuleDocument } from './schemas/module.schema';
+import {
+  Module,
+  SchoolModuleDocument,
+} from './schemas/module.schema';
+
 import { CreateModuleDto } from './dto/create-module.dto';
 import { UpdateModuleDto } from './dto/update-module.dto';
 
@@ -13,15 +17,18 @@ export class ModulesService {
     private readonly moduleModel: Model<SchoolModuleDocument>,
   ) {}
 
+  // CREATE
   async create(createModuleDto: CreateModuleDto) {
     const newModule = new this.moduleModel(createModuleDto);
     return newModule.save();
   }
 
+  // FIND ALL
   async findAll() {
     return this.moduleModel.find().sort({ createdAt: -1 });
   }
 
+  // FIND ONE
   async findOne(id: string) {
     const module = await this.moduleModel.findById(id);
 
@@ -32,11 +39,15 @@ export class ModulesService {
     return module;
   }
 
+  // UPDATE
   async update(id: string, updateModuleDto: UpdateModuleDto) {
     const updatedModule = await this.moduleModel.findByIdAndUpdate(
       id,
       updateModuleDto,
-      { new: true },
+      {
+        new: true,
+        runValidators: true,
+      },
     );
 
     if (!updatedModule) {
@@ -46,6 +57,7 @@ export class ModulesService {
     return updatedModule;
   }
 
+  // DELETE
   async remove(id: string) {
     const deletedModule = await this.moduleModel.findByIdAndDelete(id);
 

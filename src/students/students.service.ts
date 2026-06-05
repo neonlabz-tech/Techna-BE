@@ -5,7 +5,9 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
+
 import { InjectModel } from '@nestjs/mongoose';
+import * as bcrypt from 'bcryptjs';
 import { Model, Types } from 'mongoose';
 import { randomUUID } from 'node:crypto';
 import * as QRCode from 'qrcode';
@@ -15,6 +17,16 @@ import { CreateStudentDto } from './dto/create-student.dto';
 import { RejectStudentDto } from './dto/reject-student.dto';
 import { Student, StudentDocument } from './schemas/student.schema';
 
+export type CreateStudentPayload = CreateStudentDto & {
+  password?: string;
+  studentId?: string;
+  qrToken?: string;
+  enrolledAt?: string;
+  status?: 'pending' | 'approved' | 'rejected';
+};
+
+export type UpdateStudentPayload = Partial<CreateStudentPayload>;
+
 @Injectable()
 export class StudentsService {
   constructor(
@@ -23,21 +35,50 @@ export class StudentsService {
     private readonly emailService: EmailService,
   ) {}
 
-  async registerStudent(createStudentDto: CreateStudentDto): Promise<Student> {
-    this.validateRegistration(createStudentDto);
+  // ─────────────────────────────
+  // GET ALL STUDENTS
+  // ─────────────────────────────
+  async findAll() {
+    return this.studentModel.find().select('-password').lean();
+  }
 
-    const studentId = await this.generateUniqueStudentId();
+  // ─────────────────────────────
+  // GET SINGLE STUDENT
+  // ─────────────────────────────
+  async findOne(id: string) {
+    const student = await this.studentModel
+      .findById(id)
+      .select('-password')
+      .lean();
+
+    if (!student) throw new NotFoundException('Student not found');
+
+    return student;
+  }
+
+  // ─────────────────────────────
+  // CREATE STUDENT
+  // ─────────────────────────────
+  async create(data: CreateStudentPayload) {
+    this.validateRegistration(data);
+
+    const payload: CreateStudentPayload = {
+      ...data,
+      email: data.email.trim().toLowerCase(),
+      modules: data.modules ?? [],
+      studentId:
+        data.studentId?.trim() || (await this.generateUniqueStudentId()),
+      qrToken: data.qrToken?.trim() || randomUUID(),
+      status: data.status ?? 'pending',
+      enrolledAt: data.enrolledAt ?? new Date().toISOString(),
+    };
+
+    if (payload.password) {
+      payload.password = await bcrypt.hash(payload.password, 10);
+    }
 
     try {
-      const student = await this.studentModel.create({
-        ...createStudentDto,
-        email: createStudentDto.email.trim().toLowerCase(),
-        modules: createStudentDto.modules ?? [],
-        studentId,
-        qrToken: randomUUID(),
-        status: 'pending',
-        enrolledAt: new Date().toISOString(),
-      });
+      const student = await this.studentModel.create(payload);
 
       void this.emailService.sendRegistrationEmail({
         email: student.email,
@@ -45,7 +86,10 @@ export class StudentsService {
         studentId: student.studentId,
       });
 
-      return student;
+      const result = student.toObject() as { password?: string };
+      delete result.password;
+
+      return result;
     } catch (error) {
       if (this.isDuplicateKeyError(error)) {
         throw new ConflictException('Student email or ID already exists');
@@ -55,6 +99,45 @@ export class StudentsService {
     }
   }
 
+  async registerStudent(createStudentDto: CreateStudentPayload) {
+    return this.create(createStudentDto);
+  }
+
+  // ─────────────────────────────
+  // UPDATE STUDENT
+  // ─────────────────────────────
+  async update(id: string, data: UpdateStudentPayload) {
+    if (data.password) {
+      data.password = await bcrypt.hash(data.password, 10);
+    }
+
+    const student = await this.studentModel
+      .findByIdAndUpdate(id, data, {
+        new: true,
+        runValidators: true,
+      })
+      .select('-password')
+      .lean();
+
+    if (!student) throw new NotFoundException('Student not found');
+
+    return student;
+  }
+
+  // ─────────────────────────────
+  // DELETE STUDENT
+  // ─────────────────────────────
+  async remove(id: string) {
+    const student = await this.studentModel.findByIdAndDelete(id).lean();
+
+    if (!student) throw new NotFoundException('Student not found');
+
+    return { message: 'Student deleted successfully' };
+  }
+
+  // ─────────────────────────────
+  // APPROVE STUDENT
+  // ─────────────────────────────
   async approveStudent(id: string): Promise<Student> {
     const student = await this.findStudentByIdOrStudentId(id);
 
@@ -67,6 +150,9 @@ export class StudentsService {
     return this.generateStudentQrCode(student.studentId);
   }
 
+  // ─────────────────────────────
+  // REJECT STUDENT
+  // ─────────────────────────────
   async rejectStudent(
     id: string,
     rejectStudentDto: RejectStudentDto,
@@ -91,6 +177,9 @@ export class StudentsService {
     return student;
   }
 
+  // ─────────────────────────────
+  // GENERATE QR CODE
+  // ─────────────────────────────
   async generateStudentQrCode(studentId: string): Promise<Student> {
     if (!studentId?.trim()) {
       throw new BadRequestException('studentId is required');
@@ -108,14 +197,14 @@ export class StudentsService {
       );
     }
 
-    if (student.qrCode) {
-      return student;
-    }
-
     if (!student.name?.trim() || !student.email?.trim()) {
       throw new BadRequestException(
-        'Student name and email are required for QR code generation',
+        'Student name and email are required for QR generation',
       );
+    }
+
+    if (student.qrCode) {
+      return student;
     }
 
     const qrPayload = {
@@ -138,23 +227,15 @@ export class StudentsService {
     }
 
     const updatedStudent = await this.studentModel
-      .findOneAndUpdate(
-        {
-          _id: student._id,
-          $or: [
-            { qrCode: { $exists: false } },
-            { qrCode: null },
-            { qrCode: '' },
-          ],
-        },
-        { $set: { qrCode } },
-        { new: true },
-      )
+      .findByIdAndUpdate(student._id, { $set: { qrCode } }, { new: true })
       .exec();
 
     return updatedStudent ?? this.findStudentByIdOrStudentId(student.studentId);
   }
 
+  // ─────────────────────────────
+  // HELPER: FIND STUDENT
+  // ─────────────────────────────
   private async findStudentByIdOrStudentId(
     id: string,
   ): Promise<StudentDocument> {
@@ -175,7 +256,7 @@ export class StudentsService {
     return student;
   }
 
-  private validateRegistration(createStudentDto: CreateStudentDto): void {
+  private validateRegistration(createStudentDto: CreateStudentPayload): void {
     this.validateRequiredString(createStudentDto.name, 'name');
     this.validateRequiredString(createStudentDto.email, 'email');
     this.validateRequiredString(createStudentDto.phone, 'phone');
