@@ -1,23 +1,20 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  InternalServerErrorException,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { isValidObjectId, Model } from 'mongoose';
 
 import { Student } from '../students/schemas/student.schema';
-import {
-  Module as SchoolModule,
-  SchoolModuleDocument,
-} from '../modules/schemas/module.schema';
+import { Module as SchoolModule, SchoolModuleDocument } from '../modules/schemas/module.schema';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { ScanQrDto } from './dto/scan-qr.dto';
 import { AttendanceReportQueryDto } from './dto/report-query.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 import { Attendance, AttendanceDocument } from './schemas/attendance.schema';
+import {
+  BadRequestException,
+  ConflictException,
+  InternalServerErrorException,
+  NotFoundException,
+} from '../common/exceptions';
 
 type AttendanceStatus = 'present' | 'absent';
 
@@ -46,27 +43,35 @@ export class AttendanceService {
     private readonly moduleModel: Model<SchoolModuleDocument>,
   ) {}
 
-  async create(
-    createAttendanceDto: CreateAttendanceDto,
-  ): Promise<AttendanceDocument> {
-    this.validateCreatePayload(createAttendanceDto);
+  async create(dto: CreateAttendanceDto): Promise<AttendanceDocument> {
+    try {
+      const studentExists = await this.studentModel.findById(dto.studentId);
 
-    await this.ensureAttendanceDoesNotExist(
-      createAttendanceDto.studentId,
-      createAttendanceDto.moduleId,
-      createAttendanceDto.date,
-    );
+      if (!studentExists) {
+        throw new NotFoundException('Student not found');
+      }
 
-    const attendance = new this.attendanceModel(createAttendanceDto);
-    return attendance.save();
+      if (!ATTENDANCE_STATUSES.includes(dto.status as AttendanceStatus)) {
+        throw new BadRequestException('Invalid attendance status');
+      }
+
+      const attendance = await this.attendanceModel.create({
+        ...dto,
+        studentId: dto.studentId,
+        date: dto.date ?? new Date(),
+      });
+
+      return attendance;
+    } catch (error: unknown) {
+      throw new InternalServerErrorException(
+        error instanceof Error ? error.message : 'Failed to create attendance',
+      );
+    }
   }
 
-  async scanQrAndMarkAttendance(
-    scanQrDto: ScanQrDto,
-  ): Promise<AttendanceDocument> {
+  async scanQrAndMarkAttendance(scanQrDto: ScanQrDto): Promise<AttendanceDocument> {
     this.validateScanQrPayload(scanQrDto);
 
-    // Find student by QR token
     const student = await this.studentModel.findOne({
       qrToken: scanQrDto.qrToken.trim(),
     });
@@ -79,7 +84,6 @@ export class AttendanceService {
       throw new BadRequestException('Student is not approved');
     }
 
-    // Determine moduleId
     let moduleId = scanQrDto.moduleId?.trim();
 
     if (!moduleId) {
@@ -89,33 +93,27 @@ export class AttendanceService {
       moduleId = student.modules[0];
     }
 
-    // Validate moduleId format
     if (!isValidObjectId(moduleId)) {
       throw new BadRequestException('Invalid moduleId format');
     }
 
-    // Fetch module details
     const module = await this.moduleModel.findById(moduleId);
 
     if (!module) {
       throw new NotFoundException('Module not found');
     }
 
-    // Verify student is enrolled in this module
     if (!student.modules.includes(moduleId)) {
       throw new BadRequestException('Student not enrolled in this module');
     }
 
-    // Generate attendance date (today in YYYY-MM-DD format)
     const today = new Date().toISOString().split('T')[0];
 
-    // Check for duplicate attendance
     await this.ensureAttendanceDoesNotExist(student.studentId, moduleId, today);
 
-    // Create attendance record
     const attendanceData: CreateAttendanceDto = {
       studentId: student.studentId,
-      moduleId: moduleId,
+      moduleId,
       moduleName: module.name,
       date: today,
       status: 'present',
@@ -127,56 +125,72 @@ export class AttendanceService {
   }
 
   async findAll(): Promise<AttendanceDocument[]> {
-    return this.attendanceModel.find().exec();
+    return this.attendanceModel
+      .find()
+      .populate('studentId')
+      .sort({ createdAt: -1 })
+      .exec();
   }
 
   async findOne(id: string): Promise<AttendanceDocument> {
-    this.validateObjectId(id);
-
-    const record = await this.attendanceModel.findById(id).exec();
-
-    if (!record) {
-      throw new NotFoundException('Attendance record not found');
+    if (!isValidObjectId(id)) {
+      throw new BadRequestException('Invalid attendance id');
     }
 
-    return record;
+    const attendance = await this.attendanceModel
+      .findById(id)
+      .populate('studentId')
+      .exec();
+
+    if (!attendance) {
+      throw new NotFoundException('Attendance not found');
+    }
+
+    return attendance;
   }
 
-  async findByStudent(studentId: string): Promise<AttendanceDocument[]> {
-    return this.attendanceModel.find({ studentId }).exec();
-  }
-
-  async update(
-    id: string,
-    updateAttendanceDto: UpdateAttendanceDto,
-  ): Promise<AttendanceDocument> {
-    this.validateObjectId(id);
-    this.validateUpdatePayload(updateAttendanceDto);
-
-    await this.ensureUpdateDoesNotCreateDuplicate(id, updateAttendanceDto);
+  async update(id: string, dto: UpdateAttendanceDto): Promise<AttendanceDocument> {
+    if (!isValidObjectId(id)) {
+      throw new BadRequestException('Invalid attendance id');
+    }
 
     const updated = await this.attendanceModel
-      .findByIdAndUpdate(id, updateAttendanceDto, {
+      .findByIdAndUpdate(id, dto, {
         new: true,
         runValidators: true,
       })
       .exec();
 
     if (!updated) {
-      throw new NotFoundException('Attendance record not found');
+      throw new NotFoundException('Attendance not found');
     }
 
     return updated;
   }
 
   async remove(id: string): Promise<void> {
-    this.validateObjectId(id);
+    if (!isValidObjectId(id)) {
+      throw new BadRequestException('Invalid attendance id');
+    }
 
-    const deleted = await this.attendanceModel.findByIdAndDelete(id).exec();
+    const deleted = await this.attendanceModel.findByIdAndDelete(id);
 
     if (!deleted) {
-      throw new NotFoundException('Attendance record not found');
+      throw new NotFoundException('Attendance not found');
     }
+  }
+
+  async findByStudent(studentId: string): Promise<AttendanceDocument[]> {
+    const student = await this.studentModel.findOne({ studentId });
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    return this.attendanceModel
+      .find({ studentId })
+      .sort({ createdAt: -1 })
+      .exec();
   }
 
   async getReport(query: AttendanceReportQueryDto) {
@@ -257,23 +271,17 @@ export class AttendanceService {
         summary: {
           totalStudents: groupedStudents.length,
           totalRecords: attendanceRecords.length,
-          present: attendanceRecords.filter((r) => r.status === 'present')
-            .length,
+          present: attendanceRecords.filter((r) => r.status === 'present').length,
           absent: attendanceRecords.filter((r) => r.status === 'absent').length,
         },
         students: groupedStudents,
       };
-    } catch (error) {
-      if (
-        error instanceof BadRequestException ||
-        error instanceof NotFoundException
-      ) {
+    } catch (error: unknown) {
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
         throw error;
       }
 
-      throw new InternalServerErrorException(
-        'Failed to generate attendance report',
-      );
+      throw new InternalServerErrorException('Failed to generate attendance report');
     }
   }
 
@@ -281,19 +289,6 @@ export class AttendanceService {
     if (!isValidObjectId(id)) {
       throw new BadRequestException('Invalid ID');
     }
-  }
-
-  private validateCreatePayload(dto: CreateAttendanceDto): void {
-    if (!dto || typeof dto !== 'object' || Array.isArray(dto)) {
-      throw new BadRequestException('Invalid payload');
-    }
-
-    this.validateRequiredString(dto.studentId, 'studentId');
-    this.validateRequiredString(dto.moduleId, 'moduleId');
-    this.validateRequiredString(dto.moduleName, 'moduleName');
-    this.validateRequiredString(dto.date, 'date');
-    this.validateRequiredString(dto.markedAt, 'markedAt');
-    this.validateStatus(dto.status);
   }
 
   private validateScanQrPayload(dto: ScanQrDto): void {
@@ -314,9 +309,7 @@ export class AttendanceService {
     }
 
     if (Object.keys(dto).length === 0) {
-      throw new BadRequestException(
-        'At least one attendance field is required',
-      );
+      throw new BadRequestException('At least one attendance field is required');
     }
 
     this.validateOptionalString(dto.studentId, 'studentId');
@@ -359,9 +352,7 @@ export class AttendanceService {
     });
 
     if (exists) {
-      throw new ConflictException(
-        'Attendance already exists for this student/module/date',
-      );
+      throw new ConflictException('Attendance already exists for this student/module/date');
     }
   }
 
@@ -416,9 +407,7 @@ export class AttendanceService {
     }
   }
 
-  private mapAttendanceRecord(
-    record: Attendance & { _id?: unknown },
-  ): AttendanceReportItem {
+  private mapAttendanceRecord(record: Attendance & { _id?: unknown }): AttendanceReportItem {
     return {
       id: String(record._id ?? ''),
       studentId: record.studentId,

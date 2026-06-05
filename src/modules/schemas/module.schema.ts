@@ -28,6 +28,21 @@ export class Module {
 
   @Prop({ required: true, enum: ['active', 'inactive'], default: 'active' })
   status: 'active' | 'inactive';
+
+  @Prop([
+    {
+      title: String,
+      fileType: String,
+      fileUrl: String,
+      fileKey: String,
+    },
+  ])
+  resources?: {
+    title: string;
+    fileType: string;
+    fileUrl: string;
+    fileKey: string;
+  }[];
 }
 
 export const ModuleSchema = SchemaFactory.createForClass(Module);

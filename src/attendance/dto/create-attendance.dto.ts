@@ -1,27 +1,32 @@
-import { IsIn, IsNotEmpty, IsString } from 'class-validator';
+import {
+  IsString,
+  IsEnum,
+  IsNotEmpty,
+  IsISO8601,
+} from 'class-validator';
 
 export class CreateAttendanceDto {
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Student ID must be a string' })
+  @IsNotEmpty({ message: 'Student ID is required' })
   readonly studentId!: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Module ID must be a string' })
+  @IsNotEmpty({ message: 'Module ID is required' })
   readonly moduleId!: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Module name must be a string' })
+  @IsNotEmpty({ message: 'Module name is required' })
   readonly moduleName!: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsISO8601({ strict: true }, { message: 'Date must be a valid ISO8601 date' })
+  @IsNotEmpty({ message: 'Date is required' })
   readonly date!: string;
 
-  @IsString()
-  @IsIn(['present', 'absent'])
+  @IsEnum(['present', 'absent'], { message: 'Status must be either present or absent' })
+  @IsNotEmpty({ message: 'Status is required' })
   readonly status!: 'present' | 'absent';
 
-  @IsString()
-  @IsNotEmpty()
+  @IsISO8601({ strict: true }, { message: 'Marked at must be a valid ISO8601 datetime' })
+  @IsNotEmpty({ message: 'Marked at is required' })
   readonly markedAt!: string;
 }

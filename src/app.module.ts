@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 
@@ -8,22 +9,26 @@ import { AppService } from './app.service';
 import { AttendanceModule } from './attendance/attendance.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { validateEnvironment } from './config/env.validation';
-
 import { ModulesModule } from './modules/modules.module';
 import { PaymentsModule } from './payments/payments.module';
 import { StorageModule } from './storage/storage.module';
 import { StudentsModule } from './students/students.module';
 import { TeachersModule } from './teachers/teachers.module';
 import { AuthModule } from './auth/auth.module';
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { RolesGuard } from './auth/roles.guard';
 
 @Module({
   imports: [
+    // Config setup (safe + validated)
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
       validate: validateEnvironment,
     }),
 
+    // MongoDB async config (best practice)
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -33,6 +38,7 @@ import { AuthModule } from './auth/auth.module';
       }),
     }),
 
+    // Feature modules
     StudentsModule,
     TeachersModule,
     ModulesModule,
@@ -43,6 +49,11 @@ import { AuthModule } from './auth/auth.module';
     StorageModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
+  ],
 })
 export class AppModule {}

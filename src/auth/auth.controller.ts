@@ -5,6 +5,7 @@ import {
   Body,
   UseGuards,
   Request,
+  Headers,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -13,6 +14,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { RolesGuard } from './roles.guard';
 import { Roles } from '../decorators/roles.decorator';
 import { Role } from '../enums/role.enum';
+import { Public } from './public.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -20,9 +22,33 @@ export class AuthController {
 
   // ─── POST /auth/login ───────────────────────────────────────────────────────
   @Post('login')
+  @Public()
   @HttpCode(HttpStatus.OK)
   async login(@Body() body: { email: string; password: string }) {
     return this.authService.login(body.email, body.password);
+  }
+
+  // ─── POST /auth/student/login  (student-specific login) ─────────────────────
+  @Post('student/login')
+  @HttpCode(HttpStatus.OK)
+  async studentLogin(@Body() body: { email: string; password: string }) {
+    return this.authService.studentLogin(body.email, body.password);
+  }
+
+  // ─── POST /auth/logout  (any authenticated user) ─────────────────────────────
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async logout(@Headers('authorization') authHeader: string) {
+    const token = authHeader?.replace('Bearer ', '');
+    return this.authService.logout(token);
+  }
+
+  // ─── GET /auth/session  (returns current logged-in user info) ────────────────
+  @Get('session')
+  @UseGuards(JwtAuthGuard)
+  async getSession(@Request() req: any) {
+    return this.authService.getSession(req.user);
   }
 
   // ─── GET /auth/profile  (any authenticated user) ───────────────────────────
