@@ -1,12 +1,12 @@
 import * as dns from 'dns';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import { AppModule } from './app.module';
 import { HttpExceptionFilter, AllExceptionsFilter } from './common/filters';
 import { ResponseInterceptor } from './common/interceptors';
 import { CustomValidationPipe } from './common/pipes';
 
-// DNS config (only once)
+// DNS config
 dns.setServers(['8.8.8.8', '8.8.4.4']);
 dns.setDefaultResultOrder('ipv4first');
 
@@ -15,7 +15,7 @@ async function bootstrap() {
 
   // CORS
   app.enableCors({
-    origin: ['http://localhost:3000'], // production la update pannunga
+    origin: ['http://localhost:3000'],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
@@ -38,7 +38,7 @@ async function bootstrap() {
   // Global prefix
   app.setGlobalPrefix('api');
 
-  const port = process.env.PORT ?? 5000;
+  const port = Number(process.env.PORT) || 4000;
 
   await app.listen(port);
 
