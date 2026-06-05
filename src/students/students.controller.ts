@@ -1,21 +1,33 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Patch,
-  Delete,
   Body,
-  Param,
-  UseGuards,
-  Request,
+  Controller,
+  Delete,
   ForbiddenException,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Request,
+  UseGuards,
 } from '@nestjs/common';
 
-import { StudentsService } from './students.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../decorators/roles.decorator';
 import { Role } from '../enums/role.enum';
+import { RolesGuard } from '../auth/roles.guard';
+import { RejectStudentDto } from './dto/reject-student.dto';
+import { StudentsService } from './students.service';
+import type {
+  CreateStudentPayload,
+  UpdateStudentPayload,
+} from './students.service';
+
+interface AuthenticatedRequest {
+  user: {
+    role: Role;
+    userId: string;
+  };
+}
 
 @Controller('students')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -32,7 +44,7 @@ export class StudentsController {
   // ─── GET student by ID (admin or own profile) ──────────────────
   @Get(':id')
   @Roles(Role.ADMIN, Role.STUDENT)
-  async findOne(@Param('id') id: string, @Request() req: any) {
+  async findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     if (req.user.role === Role.STUDENT && req.user.userId !== id) {
       throw new ForbiddenException('You can only view your own profile');
     }
@@ -43,14 +55,14 @@ export class StudentsController {
   // ─── CREATE student (ADMIN only) ────────────────────────────────
   @Post()
   @Roles(Role.ADMIN)
-  create(@Body() body: any) {
+  create(@Body() body: CreateStudentPayload) {
     return this.studentsService.create(body);
   }
 
   // ─── UPDATE student (ADMIN only) ────────────────────────────────
   @Patch(':id')
   @Roles(Role.ADMIN)
-  update(@Param('id') id: string, @Body() body: any) {
+  update(@Param('id') id: string, @Body() body: UpdateStudentPayload) {
     return this.studentsService.update(id, body);
   }
 
@@ -66,6 +78,16 @@ export class StudentsController {
   @Roles(Role.ADMIN)
   approveStudent(@Param('id') id: string) {
     return this.studentsService.approveStudent(id);
+  }
+
+  // ─── REJECT student (ADMIN only) ────────────────────────────────
+  @Patch(':id/reject')
+  @Roles(Role.ADMIN)
+  rejectStudent(
+    @Param('id') id: string,
+    @Body() rejectStudentDto: RejectStudentDto,
+  ) {
+    return this.studentsService.rejectStudent(id, rejectStudentDto);
   }
 
   // ─── GENERATE QR CODE (ADMIN only) ──────────────────────────────
