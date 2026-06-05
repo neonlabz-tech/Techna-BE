@@ -1,30 +1,145 @@
 import {
+  BadRequestException,
+  ConflictException,
+  InternalServerErrorException,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
+import { Model, Types } from 'mongoose';
+import { randomUUID } from 'node:crypto';
 import * as QRCode from 'qrcode';
 
+import { EmailService } from '../email/email.service';
+import { CreateStudentDto } from './dto/create-student.dto';
+import { RejectStudentDto } from './dto/reject-student.dto';
 import { Student, StudentDocument } from './schemas/student.schema';
-import {
-  BadRequestException,
-  NotFoundException,
-  ConflictException,
-  InternalServerErrorException,
-} from '../common/exceptions';
+
+export type CreateStudentPayload = CreateStudentDto & {
+  password?: string;
+  studentId?: string;
+  qrToken?: string;
+  enrolledAt?: string;
+  status?: 'pending' | 'approved' | 'rejected';
+};
+
+export type UpdateStudentPayload = Partial<CreateStudentPayload>;
 
 @Injectable()
 export class StudentsService {
   constructor(
     @InjectModel(Student.name)
     private readonly studentModel: Model<StudentDocument>,
+    private readonly emailService: EmailService,
   ) {}
 
-  async approveStudent(id: string): Promise<Student> {
+  // ─────────────────────────────
+  // GET ALL STUDENTS
+  // ─────────────────────────────
+  async findAll() {
+    return this.studentModel.find().select('-password').lean();
+  }
+
+  // ─────────────────────────────
+  // GET SINGLE STUDENT
+  // ─────────────────────────────
+  async findOne(id: string) {
+    const student = await this.studentModel
+      .findById(id)
+      .select('-password')
+      .lean();
+
+    if (!student) throw new NotFoundException('Student not found');
+
+    return student;
+  }
+
+  // ─────────────────────────────
+  // CREATE STUDENT
+  // ─────────────────────────────
+  async create(data: CreateStudentPayload) {
+    this.validateRegistration(data);
+
+    const payload: CreateStudentPayload = {
+      ...data,
+      email: data.email.trim().toLowerCase(),
+      modules: data.modules ?? [],
+      studentId:
+        data.studentId?.trim() || (await this.generateUniqueStudentId()),
+      qrToken: data.qrToken?.trim() || randomUUID(),
+      status: data.status ?? 'pending',
+      enrolledAt: data.enrolledAt ?? new Date().toISOString(),
+    };
+
+    if (payload.password) {
+      payload.password = await bcrypt.hash(payload.password, 10);
+    }
+
     try {
-      const student = await this.findStudentByIdOrStudentId(id);
+      const student = await this.studentModel.create(payload);
+
+      void this.emailService.sendRegistrationEmail({
+        email: student.email,
+        name: student.name,
+        studentId: student.studentId,
+      });
+
+      const result = student.toObject() as { password?: string };
+      delete result.password;
+
+      return result;
+    } catch (error) {
+      if (this.isDuplicateKeyError(error)) {
+        throw new ConflictException('Student email or ID already exists');
+      }
+
+      throw error;
+    }
+  }
+
+  async registerStudent(createStudentDto: CreateStudentPayload) {
+    return this.create(createStudentDto);
+  }
+
+  // ─────────────────────────────
+  // UPDATE STUDENT
+  // ─────────────────────────────
+  async update(id: string, data: UpdateStudentPayload) {
+    if (data.password) {
+      data.password = await bcrypt.hash(data.password, 10);
+    }
+
+    const student = await this.studentModel
+      .findByIdAndUpdate(id, data, {
+        new: true,
+        runValidators: true,
+      })
+      .select('-password')
+      .lean();
+
+    if (!student) throw new NotFoundException('Student not found');
+
+    return student;
+  }
+
+  // ─────────────────────────────
+  // DELETE STUDENT
+  // ─────────────────────────────
+  async remove(id: string) {
+    const student = await this.studentModel.findByIdAndDelete(id).lean();
+
+    if (!student) throw new NotFoundException('Student not found');
+
+    return { message: 'Student deleted successfully' };
+  }
+
+  // ─────────────────────────────
+  // APPROVE STUDENT
+  // ─────────────────────────────
+  async approveStudent(id: string): Promise<Student> {
+    const student = await this.findStudentByIdOrStudentId(id);
 
       if (student.status !== 'approved') {
         student.status = 'approved';
@@ -32,139 +147,39 @@ export class StudentsService {
         await student.save();
       }
 
-      return await this.generateStudentQrCode(student.studentId);
-    } catch (error) {
-      if (error instanceof BadRequestException || 
-          error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
-        'Failed to approve student: ' + (error instanceof Error ? error.message : 'Unknown error'),
-      );
-    }
+    return this.generateStudentQrCode(student.studentId);
   }
 
-  async findAll(): Promise<StudentDocument[]> {
-    try {
-      return await this.studentModel.find().exec();
-    } catch (error) {
-      throw new InternalServerErrorException(
-        'Failed to fetch students: ' + (error instanceof Error ? error.message : 'Unknown error'),
-      );
-    }
-  }
+  // ─────────────────────────────
+  // REJECT STUDENT
+  // ─────────────────────────────
+  async rejectStudent(
+    id: string,
+    rejectStudentDto: RejectStudentDto,
+  ): Promise<Student> {
+    this.validateRequiredString(rejectStudentDto.reason, 'reason');
 
-  async findOne(id: string): Promise<StudentDocument> {
-    try {
-      return await this.findStudentByIdOrStudentId(id);
-    } catch (error) {
-      if (error instanceof BadRequestException || error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
-        'Failed to fetch student: ' + (error instanceof Error ? error.message : 'Unknown error'),
-      );
-    }
-  }
+    const student = await this.findStudentByIdOrStudentId(id);
+    const shouldSendEmail = student.status !== 'rejected';
 
-  async create(body: any): Promise<StudentDocument> {
-    try {
-      if (!body || typeof body !== 'object') {
-        throw new BadRequestException('Invalid payload');
-      }
+    student.status = 'rejected';
+    await student.save();
 
-      const name = body.name?.trim();
-      const email = body.email?.trim()?.toLowerCase();
-      const password = body.password;
-
-      if (!name || !email || !password) {
-        throw new BadRequestException('Name, email and password are required');
-      }
-
-      const exists = await this.studentModel
-        .findOne({ $or: [{ email }, { studentId: body.studentId }] })
-        .exec();
-
-      if (exists) {
-        throw new ConflictException('Student with given email or studentId already exists');
-      }
-
-      const hashed = await bcrypt.hash(password, 10);
-
-      const student = new this.studentModel({
-        ...body,
-        name,
-        email,
-        password: hashed,
-        enrolledAt: body.enrolledAt ?? new Date().toISOString(),
-        qrToken: body.qrToken ?? `${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`,
+    if (shouldSendEmail) {
+      void this.emailService.sendRejectionEmail({
+        email: student.email,
+        name: student.name,
+        studentId: student.studentId,
+        reason: rejectStudentDto.reason.trim(),
       });
-
-      return await student.save();
-    } catch (error) {
-      if (error instanceof BadRequestException || error instanceof ConflictException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
-        'Failed to create student: ' + (error instanceof Error ? error.message : 'Unknown error'),
-      );
     }
+
+    return student;
   }
 
-  async update(id: string, body: any): Promise<StudentDocument> {
-    try {
-      if (!body || typeof body !== 'object') {
-        throw new BadRequestException('Invalid payload');
-      }
-
-      const student = await this.findStudentByIdOrStudentId(id);
-
-      if (body.password) {
-        body.password = await bcrypt.hash(body.password, 10);
-      }
-
-      const updated = await this.studentModel
-        .findByIdAndUpdate(student._id, body, { returnDocument: 'after', runValidators: true })
-        .exec();
-
-      if (!updated) {
-        throw new NotFoundException('Student not found');
-      }
-
-      return updated;
-    } catch (error) {
-      if (
-        error instanceof BadRequestException ||
-        error instanceof NotFoundException ||
-        error instanceof ConflictException
-      ) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
-        'Failed to update student: ' + (error instanceof Error ? error.message : 'Unknown error'),
-      );
-    }
-  }
-
-  async remove(id: string): Promise<void> {
-    try {
-      const student = await this.findStudentByIdOrStudentId(id);
-
-      const deleted = await this.studentModel.findByIdAndDelete(student._id).exec();
-
-      if (!deleted) {
-        throw new NotFoundException('Student not found');
-      }
-    } catch (error) {
-      if (error instanceof BadRequestException || error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
-        'Failed to delete student: ' + (error instanceof Error ? error.message : 'Unknown error'),
-      );
-    }
-  }
-
+  // ─────────────────────────────
+  // GENERATE QR CODE
+  // ─────────────────────────────
   async generateStudentQrCode(studentId: string): Promise<Student> {
     if (!studentId?.trim()) {
       throw new BadRequestException('studentId is required');
@@ -212,18 +227,7 @@ export class StudentsService {
       }
 
     const updatedStudent = await this.studentModel
-      .findOneAndUpdate(
-        {
-          _id: student._id,
-          $or: [
-            { qrCode: { $exists: false } },
-            { qrCode: null },
-            { qrCode: '' },
-          ],
-        },
-        { $set: { qrCode } },
-        { new: true },
-      )
+      .findByIdAndUpdate(student._id, { $set: { qrCode } }, { new: true })
       .exec();
 
     return updatedStudent ?? this.findStudentByIdOrStudentId(student.studentId);
@@ -232,11 +236,12 @@ export class StudentsService {
   // ─────────────────────────────
   // HELPER: FIND STUDENT
   // ─────────────────────────────
-  private async findStudentByIdOrStudentId(id: string): Promise<StudentDocument> {
-    try {
-      if (!id?.trim()) {
-        throw new BadRequestException('Student identifier is required');
-      }
+  private async findStudentByIdOrStudentId(
+    id: string,
+  ): Promise<StudentDocument> {
+    if (!id?.trim()) {
+      throw new BadRequestException('Student identifier is required');
+    }
 
       const query = Types.ObjectId.isValid(id)
         ? { $or: [{ _id: id }, { studentId: id }] }
@@ -248,15 +253,59 @@ export class StudentsService {
         throw new NotFoundException('Student not found');
       }
 
-      return student;
-    } catch (error) {
-      if (error instanceof BadRequestException || 
-          error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
-        'Failed to find student: ' + (error instanceof Error ? error.message : 'Unknown error'),
-      );
+    return student;
+  }
+
+  private validateRegistration(createStudentDto: CreateStudentPayload): void {
+    this.validateRequiredString(createStudentDto.name, 'name');
+    this.validateRequiredString(createStudentDto.email, 'email');
+    this.validateRequiredString(createStudentDto.phone, 'phone');
+    this.validateRequiredString(createStudentDto.address, 'address');
+    this.validateRequiredString(createStudentDto.dob, 'dob');
+    this.validateRequiredString(createStudentDto.batch, 'batch');
+
+    if (
+      createStudentDto.modules !== undefined &&
+      (!Array.isArray(createStudentDto.modules) ||
+        createStudentDto.modules.some(
+          (module) => typeof module !== 'string' || !module.trim(),
+        ))
+    ) {
+      throw new BadRequestException('modules must be an array of strings');
     }
+  }
+
+  private validateRequiredString(
+    value: string | undefined,
+    field: string,
+  ): void {
+    if (!value?.trim()) {
+      throw new BadRequestException(`${field} is required`);
+    }
+  }
+
+  private async generateUniqueStudentId(): Promise<string> {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const studentId = `STU-${Date.now()}-${Math.floor(Math.random() * 1000)
+        .toString()
+        .padStart(3, '0')}`;
+
+      const existingStudent = await this.studentModel.exists({ studentId });
+
+      if (!existingStudent) {
+        return studentId;
+      }
+    }
+
+    throw new InternalServerErrorException('Failed to generate student ID');
+  }
+
+  private isDuplicateKeyError(error: unknown): boolean {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === 11000
+    );
   }
 }
