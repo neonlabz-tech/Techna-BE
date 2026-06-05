@@ -131,11 +131,11 @@ export class StudentsService {
   async approveStudent(id: string): Promise<Student> {
     const student = await this.findStudentByIdOrStudentId(id);
 
-    if (student.status !== 'approved') {
-      student.status = 'approved';
-      student.approvedAt = new Date().toISOString();
-      await student.save();
-    }
+      if (student.status !== 'approved') {
+        student.status = 'approved';
+        student.approvedAt = new Date().toISOString();
+        await student.save();
+      }
 
     return this.generateStudentQrCode(student.studentId);
   }
@@ -172,7 +172,7 @@ export class StudentsService {
       throw new BadRequestException('studentId is required');
     }
 
-    const student = await this.studentModel.findOne({ studentId }).exec();
+      const student = await this.studentModel.findOne({ studentId }).exec();
 
     if (!student) throw new NotFoundException('Student not found');
 
@@ -182,26 +182,30 @@ export class StudentsService {
       );
     }
 
+    if (student.qrCode) {
+      return student;
+    }
+
     if (student.qrCode) return student;
 
-    const qrPayload = {
-      studentId: student.studentId,
-      fullName: student.name,
-      email: student.email,
-    };
+      const qrPayload = {
+        studentId: student.studentId,
+        fullName: student.name,
+        email: student.email,
+      };
 
-    let qrCode: string;
+      let qrCode: string;
 
-    try {
-      qrCode = await QRCode.toDataURL(JSON.stringify(qrPayload), {
-        errorCorrectionLevel: 'M',
-        margin: 1,
-        type: 'image/png',
-        width: 300,
-      });
-    } catch {
-      throw new InternalServerErrorException('Failed to generate QR code');
-    }
+      try {
+        qrCode = await QRCode.toDataURL(JSON.stringify(qrPayload), {
+          errorCorrectionLevel: 'M',
+          margin: 1,
+          type: 'image/png',
+          width: 300,
+        });
+      } catch (qrError) {
+        throw new InternalServerErrorException('Failed to generate QR code');
+      }
 
     const updated = await this.studentModel.findByIdAndUpdate(
       student._id,
@@ -220,11 +224,11 @@ export class StudentsService {
       throw new BadRequestException('Student identifier is required');
     }
 
-    const query = Types.ObjectId.isValid(id)
-      ? { $or: [{ _id: id }, { studentId: id }] }
-      : { studentId: id };
+      const query = Types.ObjectId.isValid(id)
+        ? { $or: [{ _id: id }, { studentId: id }] }
+        : { studentId: id };
 
-    const student = await this.studentModel.findOne(query).exec();
+      const student = await this.studentModel.findOne(query).exec();
 
     if (!student) throw new NotFoundException('Student not found');
 

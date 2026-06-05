@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  InternalServerErrorException,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { InjectModel } from '@nestjs/mongoose';
 import { isValidObjectId, Model } from 'mongoose';
@@ -19,6 +13,12 @@ import {
   Attendance,
   AttendanceDocument,
 } from './schemas/attendance.schema';
+import {
+  BadRequestException,
+  ConflictException,
+  InternalServerErrorException,
+  NotFoundException,
+} from '../common/exceptions';
 
 type AttendanceStatus = 'present' | 'absent';
 

@@ -2,6 +2,9 @@ import * as dns from 'dns';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { HttpExceptionFilter, AllExceptionsFilter } from './common/filters';
+import { ResponseInterceptor } from './common/interceptors';
+import { CustomValidationPipe } from './common/pipes';
 
 // DNS config (helps with MongoDB / network resolution issues)
 dns.setServers(['8.8.8.8', '8.8.4.4']);
@@ -16,9 +19,9 @@ async function bootstrap() {
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
-
-  // Global validation pipe (DTO validation)
+  // Global Pipes: use custom validation plus Nest's ValidationPipe
   app.useGlobalPipes(
+    new CustomValidationPipe(),
     new ValidationPipe({
       whitelist: true, // remove unknown fields
       forbidNonWhitelisted: false,
@@ -26,7 +29,13 @@ async function bootstrap() {
     }),
   );
 
-  // Global API prefix
+  // Global Interceptors
+  app.useGlobalInterceptors(new ResponseInterceptor());
+
+  // Global Exception Filters - Order matters! More specific first
+  app.useGlobalFilters(new HttpExceptionFilter(), new AllExceptionsFilter());
+
+  // Global prefix
   app.setGlobalPrefix('api');
 
   const port = Number(process.env.PORT) || 4000;
