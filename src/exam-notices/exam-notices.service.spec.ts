@@ -1,4 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
+import { getModelToken } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
 
 import { ExamNoticesService } from './exam-notices.service';
@@ -26,12 +27,12 @@ describe('ExamNoticesService', () => {
       providers: [
         ExamNoticesService,
         {
-          provide: 'ExamNoticeModel',
+          provide: getModelToken('ExamNotice'),
           useValue: model,
         },
       ],
     })
-      .overrideProvider('ExamNoticeModel')
+      .overrideProvider(getModelToken('ExamNotice'))
       .useValue(model)
       .compile();
 
