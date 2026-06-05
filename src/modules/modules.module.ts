@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module as NestModule } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 
 import { ModulesController } from './modules.controller';
@@ -9,7 +9,7 @@ import {
   ModuleSchema,
 } from './schemas/module.schema';
 
-@Module({
+@NestModule({
   imports: [
     MongooseModule.forFeature([
       {
@@ -20,6 +20,6 @@ import {
   ],
   controllers: [ModulesController],
   providers: [ModulesService],
-  exports: [ModulesService], // important for reuse in other modules
+  exports: [ModulesService],
 })
 export class ModulesModule {}

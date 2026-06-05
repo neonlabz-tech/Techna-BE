@@ -9,7 +9,6 @@ import { AppService } from './app.service';
 import { AttendanceModule } from './attendance/attendance.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { validateEnvironment } from './config/env.validation';
-
 import { ModulesModule } from './modules/modules.module';
 import { PaymentsModule } from './payments/payments.module';
 import { StorageModule } from './storage/storage.module';
@@ -22,12 +21,14 @@ import { RolesGuard } from './auth/roles.guard';
 
 @Module({
   imports: [
+    // Config setup (safe + validated)
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
       validate: validateEnvironment,
     }),
 
+    // MongoDB async config (best practice)
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -38,6 +39,7 @@ import { RolesGuard } from './auth/roles.guard';
       }),
     }),
 
+    // Feature modules
     StudentsModule,
     TeachersModule,
     ModulesModule,

@@ -35,16 +35,10 @@ export class StudentsService {
     private readonly emailService: EmailService,
   ) {}
 
-  // ─────────────────────────────
-  // GET ALL STUDENTS
-  // ─────────────────────────────
   async findAll() {
     return this.studentModel.find().select('-password').lean();
   }
 
-  // ─────────────────────────────
-  // GET SINGLE STUDENT
-  // ─────────────────────────────
   async findOne(id: string) {
     const student = await this.studentModel
       .findById(id)
@@ -94,7 +88,6 @@ export class StudentsService {
       if (this.isDuplicateKeyError(error)) {
         throw new ConflictException('Student email or ID already exists');
       }
-
       throw error;
     }
   }
@@ -124,9 +117,6 @@ export class StudentsService {
     return student;
   }
 
-  // ─────────────────────────────
-  // DELETE STUDENT
-  // ─────────────────────────────
   async remove(id: string) {
     const student = await this.studentModel.findByIdAndDelete(id).lean();
 
@@ -153,11 +143,8 @@ export class StudentsService {
   // ─────────────────────────────
   // REJECT STUDENT
   // ─────────────────────────────
-  async rejectStudent(
-    id: string,
-    rejectStudentDto: RejectStudentDto,
-  ): Promise<Student> {
-    this.validateRequiredString(rejectStudentDto.reason, 'reason');
+  async rejectStudent(id: string, dto: RejectStudentDto): Promise<Student> {
+    this.validateRequiredString(dto.reason, 'reason');
 
     const student = await this.findStudentByIdOrStudentId(id);
     const shouldSendEmail = student.status !== 'rejected';
@@ -170,7 +157,7 @@ export class StudentsService {
         email: student.email,
         name: student.name,
         studentId: student.studentId,
-        reason: rejectStudentDto.reason.trim(),
+        reason: dto.reason.trim(),
       });
     }
 
@@ -187,9 +174,7 @@ export class StudentsService {
 
       const student = await this.studentModel.findOne({ studentId }).exec();
 
-      if (!student) {
-        throw new NotFoundException('Student not found');
-      }
+    if (!student) throw new NotFoundException('Student not found');
 
     if (student.status !== 'approved') {
       throw new BadRequestException(
@@ -201,11 +186,7 @@ export class StudentsService {
       return student;
     }
 
-    if (!student.name?.trim() || !student.email?.trim()) {
-      throw new BadRequestException(
-        'Student name and email are required for QR code generation',
-      );
-    }
+    if (student.qrCode) return student;
 
       const qrPayload = {
         studentId: student.studentId,
@@ -226,19 +207,19 @@ export class StudentsService {
         throw new InternalServerErrorException('Failed to generate QR code');
       }
 
-    const updatedStudent = await this.studentModel
-      .findByIdAndUpdate(student._id, { $set: { qrCode } }, { new: true })
-      .exec();
+    const updated = await this.studentModel.findByIdAndUpdate(
+      student._id,
+      { $set: { qrCode } },
+      { new: true },
+    );
 
-    return updatedStudent ?? this.findStudentByIdOrStudentId(student.studentId);
+    return updated ?? student;
   }
 
   // ─────────────────────────────
-  // HELPER: FIND STUDENT
+  // HELPERS
   // ─────────────────────────────
-  private async findStudentByIdOrStudentId(
-    id: string,
-  ): Promise<StudentDocument> {
+  private async findStudentByIdOrStudentId(id: string): Promise<StudentDocument> {
     if (!id?.trim()) {
       throw new BadRequestException('Student identifier is required');
     }
@@ -249,52 +230,37 @@ export class StudentsService {
 
       const student = await this.studentModel.findOne(query).exec();
 
-      if (!student) {
-        throw new NotFoundException('Student not found');
-      }
+    if (!student) throw new NotFoundException('Student not found');
 
     return student;
   }
 
-  private validateRegistration(createStudentDto: CreateStudentPayload): void {
-    this.validateRequiredString(createStudentDto.name, 'name');
-    this.validateRequiredString(createStudentDto.email, 'email');
-    this.validateRequiredString(createStudentDto.phone, 'phone');
-    this.validateRequiredString(createStudentDto.address, 'address');
-    this.validateRequiredString(createStudentDto.dob, 'dob');
-    this.validateRequiredString(createStudentDto.batch, 'batch');
-
-    if (
-      createStudentDto.modules !== undefined &&
-      (!Array.isArray(createStudentDto.modules) ||
-        createStudentDto.modules.some(
-          (module) => typeof module !== 'string' || !module.trim(),
-        ))
-    ) {
-      throw new BadRequestException('modules must be an array of strings');
-    }
+  private validateRegistration(dto: CreateStudentPayload): void {
+    this.validateRequiredString(dto.name, 'name');
+    this.validateRequiredString(dto.email, 'email');
+    this.validateRequiredString(dto.phone, 'phone');
+    this.validateRequiredString(dto.address, 'address');
+    this.validateRequiredString(dto.dob, 'dob');
+    this.validateRequiredString(dto.batch, 'batch');
   }
 
-  private validateRequiredString(
-    value: string | undefined,
-    field: string,
-  ): void {
+  private validateRequiredString(value: string | undefined, field: string) {
     if (!value?.trim()) {
       throw new BadRequestException(`${field} is required`);
     }
   }
 
   private async generateUniqueStudentId(): Promise<string> {
-    for (let attempt = 0; attempt < 5; attempt += 1) {
-      const studentId = `STU-${Date.now()}-${Math.floor(Math.random() * 1000)
+    for (let i = 0; i < 5; i++) {
+      const studentId = `STU-${Date.now()}-${Math.floor(
+        Math.random() * 1000,
+      )
         .toString()
         .padStart(3, '0')}`;
 
-      const existingStudent = await this.studentModel.exists({ studentId });
+      const exists = await this.studentModel.exists({ studentId });
 
-      if (!existingStudent) {
-        return studentId;
-      }
+      if (!exists) return studentId;
     }
 
     throw new InternalServerErrorException('Failed to generate student ID');
@@ -305,7 +271,7 @@ export class StudentsService {
       typeof error === 'object' &&
       error !== null &&
       'code' in error &&
-      error.code === 11000
+      (error as any).code === 11000
     );
   }
 }
