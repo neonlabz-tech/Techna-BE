@@ -20,9 +20,9 @@ async function bootstrap() {
   // Global validation pipe (DTO validation)
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // remove unknown fields
-      forbidNonWhitelisted: false,
-      transform: true, // auto transform types
+      whitelist: true,            // strip unknown fields before reaching service
+      forbidNonWhitelisted: true, // CHANGED: was false — now throws 400 if unknown fields are sent
+      transform: true,            // auto transform types
     }),
   );
 
