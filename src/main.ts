@@ -3,7 +3,6 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter, AllExceptionsFilter } from './common/filters';
-import { CustomValidationPipe } from './common/pipes';
 
 // DNS config (helps with MongoDB / network resolution issues)
 dns.setServers(['8.8.8.8', '8.8.4.4']);
@@ -18,17 +17,16 @@ async function bootstrap() {
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
-  // Global Pipes: use custom validation plus Nest's ValidationPipe
+
+  // Global Validation Pipe
+  // CustomValidationPipe removed — it was blocking GET requests with "No data submitted"
   app.useGlobalPipes(
-    new CustomValidationPipe(),
     new ValidationPipe({
-      whitelist: true,            // strip unknown fields before reaching service
-      forbidNonWhitelisted: true, // CHANGED: was false — now throws 400 if unknown fields are sent
-      transform: true,            // auto transform types
+      whitelist: true,             // strip unknown fields before reaching service
+      forbidNonWhitelisted: true,  // throw 400 if unknown fields are sent
+      transform: true,             // auto transform types
     }),
   );
-
-  // Global Interceptors are registered via AppModule providers
 
   // Global Exception Filters - Order matters! More specific first
   app.useGlobalFilters(new HttpExceptionFilter(), new AllExceptionsFilter());
