@@ -4,9 +4,11 @@ import { InjectModel } from '@nestjs/mongoose';
 import { isValidObjectId, Model } from 'mongoose';
 
 import { Student } from '../students/schemas/student.schema';
+import { Module as SchoolModule } from '../modules/schemas/module.schema';
 
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { AttendanceReportQueryDto } from './dto/report-query.dto';
+import { ScanAttendanceDto } from './dto/scan-attendance.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 
 import {
@@ -32,6 +34,9 @@ export class AttendanceService {
 
     @InjectModel(Student.name)
     private readonly studentModel: Model<any>,
+
+    @InjectModel(SchoolModule.name)
+    private readonly moduleModel: Model<any>,
   ) {}
 
   // CREATE ATTENDANCE
@@ -39,8 +44,9 @@ export class AttendanceService {
     dto: CreateAttendanceDto,
   ): Promise<AttendanceDocument> {
     try {
-      // validate student
-      const studentExists = await this.studentModel.findById(dto.studentId);
+      const studentExists = await this.studentModel.findOne({
+        studentId: dto.studentId,
+      });
 
       if (!studentExists) {
         throw new NotFoundException('Student not found');
@@ -51,17 +57,84 @@ export class AttendanceService {
         throw new BadRequestException('Invalid attendance status');
       }
 
+      await this.ensureUniqueAttendanceSession(dto);
+
       // IMPORTANT FIX: store STRING, not ObjectId
+      const dateToUse = dto.date ?? new Date().toISOString();
+      const sessionDate = this.normalizeSessionDate(dateToUse);
+
       const attendance = await this.attendanceModel.create({
         ...dto,
-        studentId: dto.studentId, // ✅ FIXED HERE
-        date: dto.date ?? new Date(),
+        studentId: dto.studentId,
+        date: dateToUse,
+        sessionDate,
       });
 
       return attendance;
     } catch (error) {
-      throw new InternalServerErrorException(error.message);
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException ||
+        error instanceof ConflictException
+      ) {
+        throw error;
+      }
+
+      // MongoDB unique index violation — concurrent request safety net
+      if ((error as any)?.code === 11000) {
+        throw new ConflictException('Attendance already marked for this session');
+      }
+
+      const message = error instanceof Error ? error.message : 'Internal server error';
+      throw new InternalServerErrorException(message);
     }
+  }
+
+  // SCAN QR ATTENDANCE
+  async scanQr(
+    dto: ScanAttendanceDto,
+  ): Promise<{ success: true; message: string; attendance: AttendanceDocument }> {
+    const qrToken = dto.qrToken?.trim();
+
+    if (!qrToken) {
+      throw new BadRequestException('QR token is required');
+    }
+
+    const student = await this.studentModel
+      .findOne({ qrToken })
+      .exec();
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    if (student.status !== 'approved') {
+      throw new BadRequestException('Student is not approved');
+    }
+
+    // Validate module exists — rejects invalid or non-existent moduleId
+    const moduleRecord = isValidObjectId(dto.moduleId)
+      ? await this.moduleModel.findById(dto.moduleId).exec()
+      : null;
+
+    if (!moduleRecord) {
+      throw new NotFoundException('Module not found');
+    }
+
+    const attendance = await this.create({
+      studentId: student.studentId,
+      moduleId: dto.moduleId,
+      moduleName: moduleRecord.name,
+      date: dto.date ?? new Date().toISOString(),
+      status: dto.status ?? 'present',
+      markedAt: dto.markedAt ?? new Date().toISOString(),
+    });
+
+    return {
+      success: true,
+      message: 'Attendance marked successfully',
+      attendance,
+    };
   }
 
   // GET ALL
@@ -176,5 +249,29 @@ export class AttendanceService {
       absent: data.length - present,
       records: data,
     };
+  }
+
+  private normalizeSessionDate(date: string): string {
+    return new Date(date).toISOString().split('T')[0];
+  }
+
+  private async ensureUniqueAttendanceSession(
+    dto: CreateAttendanceDto,
+  ): Promise<void> {
+    const normalizedDate = this.normalizeSessionDate(dto.date);
+
+    const existing = await this.attendanceModel
+      .findOne({
+        studentId: dto.studentId,
+        moduleId: dto.moduleId,
+        date: { $regex: `^${normalizedDate}` },
+      })
+      .exec();
+
+    if (existing) {
+      throw new ConflictException(
+        'Attendance already marked for this session',
+      );
+    }
   }
 }

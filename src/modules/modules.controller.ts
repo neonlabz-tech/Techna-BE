@@ -1,3 +1,4 @@
+/// <reference types="multer" />
 import {
   Controller,
   Get,
@@ -63,16 +64,17 @@ export class ModulesController {
     return this.modulesService.remove(id);
   }
 
- @Post(':id/upload-resource')
-@UseInterceptors(FileInterceptor('file'))
-uploadResource(
-  @Param('id') id: string,
-  @UploadedFile() file: Express.Multer.File,
-  @Body('title') title: string,
-) {
-  return this.modulesService.uploadResource(id, file, title);
-}
-@Delete(':moduleId/resources/:resourceId')
+  @Post(':id/upload-resource')
+  @UseInterceptors(FileInterceptor('file'))
+  uploadResource(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body('title') title: string,
+  ) {
+    return this.modulesService.uploadResource(id, file, title);
+  }
+
+  @Delete(':moduleId/resources/:resourceId')
 deleteResource(
   @Param('moduleId') moduleId: string,
   @Param('resourceId') resourceId: string,
