@@ -9,6 +9,8 @@ import { AppService } from './app.service';
 import { AttendanceModule } from './attendance/attendance.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { validateEnvironment } from './config/env.validation';
+
+import { ExamNoticesModule } from './exam-notices/exam-notices.module';
 import { ModulesModule } from './modules/modules.module';
 import { PaymentsModule } from './payments/payments.module';
 import { StorageModule } from './storage/storage.module';
@@ -42,6 +44,7 @@ import { RolesGuard } from './auth/roles.guard';
     // Feature modules
     StudentsModule,
     TeachersModule,
+    ExamNoticesModule,
     ModulesModule,
     AttendanceModule,
     DashboardModule,
