@@ -12,7 +12,7 @@ export class Teacher {
   email: string;
 
   @Prop({ required: true })
-  password: string;                                     // ← ADD THIS
+  password: string; // ← ADD THIS
 
   @Prop({ required: true })
   phone: string;

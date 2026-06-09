@@ -1,8 +1,15 @@
 import { randomUUID } from 'crypto';
-import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { STORAGE_FOLDERS, type StorageFolder } from './storage.constants';
-import type { StorageObjectResult, StorageUploadInput } from './storage.interfaces';
+import type {
+  StorageObjectResult,
+  StorageUploadInput,
+} from './storage.interfaces';
 
 export const STORAGE_CONFIG_TOKEN = 'storage-config';
 
@@ -22,17 +29,23 @@ export class StorageService {
   private readonly bucketName: string | null;
   private readonly publicBaseUrl: string | null;
 
-  constructor(@Inject(STORAGE_CONFIG_TOKEN) private readonly storageConfig: StorageConfig) {
+  constructor(
+    @Inject(STORAGE_CONFIG_TOKEN) private readonly storageConfig: StorageConfig,
+  ) {
     this.bucketName = storageConfig.bucketName?.trim() || null;
     this.publicBaseUrl = storageConfig.publicBaseUrl?.trim() || null;
     this.client = this.buildClient(storageConfig);
 
     if (!this.client) {
-      this.logger.warn('Cloudflare R2 is not fully configured yet. Uploads will fail until the R2 env vars are provided.');
+      this.logger.warn(
+        'Cloudflare R2 is not fully configured yet. Uploads will fail until the R2 env vars are provided.',
+      );
     }
   }
 
-  async uploadProfilePhoto(input: StorageUploadInput): Promise<StorageObjectResult> {
+  async uploadProfilePhoto(
+    input: StorageUploadInput,
+  ): Promise<StorageObjectResult> {
     return this.uploadObject(STORAGE_FOLDERS.profilePhotos, input);
   }
 
@@ -40,7 +53,9 @@ export class StorageService {
     return this.uploadObject(STORAGE_FOLDERS.qrImages, input);
   }
 
-  async uploadNoteAsset(input: StorageUploadInput): Promise<StorageObjectResult> {
+  async uploadNoteAsset(
+    input: StorageUploadInput,
+  ): Promise<StorageObjectResult> {
     return this.uploadObject(STORAGE_FOLDERS.notes, input);
   }
 
@@ -55,7 +70,10 @@ export class StorageService {
     );
   }
 
-  private async uploadObject(folder: StorageFolder, input: StorageUploadInput): Promise<StorageObjectResult> {
+  private async uploadObject(
+    folder: StorageFolder,
+    input: StorageUploadInput,
+  ): Promise<StorageObjectResult> {
     const { client, bucketName } = this.getConfiguredStorage();
 
     const key = this.buildObjectKey(folder, input.originalName, input.scope);
@@ -80,11 +98,18 @@ export class StorageService {
   }
 
   private buildClient(storageConfig: StorageConfig): S3Client | null {
-    if (!storageConfig.accountId || !storageConfig.accessKeyId || !storageConfig.secretAccessKey || !storageConfig.bucketName) {
+    if (
+      !storageConfig.accountId ||
+      !storageConfig.accessKeyId ||
+      !storageConfig.secretAccessKey ||
+      !storageConfig.bucketName
+    ) {
       return null;
     }
 
-    const endpoint = storageConfig.endpoint?.trim() || this.getDefaultEndpoint(storageConfig.accountId);
+    const endpoint =
+      storageConfig.endpoint?.trim() ||
+      this.getDefaultEndpoint(storageConfig.accountId);
 
     return new S3Client({
       region: 'auto',
@@ -97,7 +122,11 @@ export class StorageService {
     });
   }
 
-  private buildObjectKey(folder: StorageFolder, originalName: string, scope?: string): string {
+  private buildObjectKey(
+    folder: StorageFolder,
+    originalName: string,
+    scope?: string,
+  ): string {
     const sanitizedName = this.sanitizeFileName(originalName);
     const prefix = scope ? `${this.sanitizeSegment(scope)}/` : '';
 
@@ -109,7 +138,12 @@ export class StorageService {
       return null;
     }
 
-    return new URL(key, this.publicBaseUrl.endsWith('/') ? this.publicBaseUrl : `${this.publicBaseUrl}/`).toString();
+    return new URL(
+      key,
+      this.publicBaseUrl.endsWith('/')
+        ? this.publicBaseUrl
+        : `${this.publicBaseUrl}/`,
+    ).toString();
   }
 
   private getDefaultEndpoint(accountId: string): string {
@@ -117,16 +151,21 @@ export class StorageService {
   }
 
   private sanitizeFileName(fileName: string): string {
-    return this.sanitizeSegment(fileName.replace(/\.[^.]+$/, '')) + this.getFileExtension(fileName);
+    return (
+      this.sanitizeSegment(fileName.replace(/\.[^.]+$/, '')) +
+      this.getFileExtension(fileName)
+    );
   }
 
   private sanitizeSegment(value: string): string {
-    return value
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9-_]+/g, '-')
-      .replace(/-{2,}/g, '-')
-      .replace(/^-+|-+$/g, '') || 'file';
+    return (
+      value
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9-_]+/g, '-')
+        .replace(/-{2,}/g, '-')
+        .replace(/^-+|-+$/g, '') || 'file'
+    );
   }
 
   private getFileExtension(fileName: string): string {

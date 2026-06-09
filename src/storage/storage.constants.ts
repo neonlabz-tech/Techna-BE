@@ -4,4 +4,5 @@ export const STORAGE_FOLDERS = {
   notes: 'Notes',
 } as const;
 
-export type StorageFolder = (typeof STORAGE_FOLDERS)[keyof typeof STORAGE_FOLDERS];
+export type StorageFolder =
+  (typeof STORAGE_FOLDERS)[keyof typeof STORAGE_FOLDERS];

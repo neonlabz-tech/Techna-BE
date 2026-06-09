@@ -2,15 +2,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import type { Multer } from 'multer';
 
-import {
-  Module,
-  SchoolModuleDocument,
-} from './schemas/module.schema';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { Module, SchoolModuleDocument } from './schemas/module.schema';
 import { CreateModuleDto } from './dto/create-module.dto';
 import { UpdateModuleDto } from './dto/update-module.dto';
-import { DeleteObjectCommand } from '@aws-sdk/client-s3';
 import {
   NotFoundException,
   InternalServerErrorException,
@@ -23,30 +20,27 @@ export class ModulesService {
     private readonly moduleModel: Model<SchoolModuleDocument>,
   ) {}
 
-  // CREATE
   async create(createModuleDto: CreateModuleDto) {
     try {
       const newModule = new this.moduleModel(createModuleDto);
       return await newModule.save();
-    } catch (error) {
+    } catch (error: unknown) {
       throw new InternalServerErrorException(
         'Failed to create module: ' + (error instanceof Error ? error.message : 'Unknown error'),
       );
     }
   }
 
-  // FIND ALL
   async findAll() {
     try {
       return await this.moduleModel.find().sort({ createdAt: -1 });
-    } catch (error) {
+    } catch (error: unknown) {
       throw new InternalServerErrorException(
         'Failed to fetch modules: ' + (error instanceof Error ? error.message : 'Unknown error'),
       );
     }
   }
 
-  // FIND ONE
   async findOne(id: string) {
     try {
       const module = await this.moduleModel.findById(id);
@@ -56,7 +50,7 @@ export class ModulesService {
       }
 
       return module;
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -66,7 +60,6 @@ export class ModulesService {
     }
   }
 
-  // UPDATE
   async update(id: string, updateModuleDto: UpdateModuleDto) {
     try {
       const updatedModule = await this.moduleModel.findByIdAndUpdate(
@@ -80,7 +73,7 @@ export class ModulesService {
       }
 
       return updatedModule;
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -90,7 +83,6 @@ export class ModulesService {
     }
   }
 
-  // DELETE
   async remove(id: string) {
     try {
       const deletedModule = await this.moduleModel.findByIdAndDelete(id);
@@ -102,7 +94,7 @@ export class ModulesService {
       return {
         message: 'Module deleted successfully',
       };
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -121,11 +113,7 @@ export class ModulesService {
     },
   });
 
-  async uploadResource(
-    id: string,
-    file: Express.Multer.File,
-    title: string,
-  ) {
+  async uploadResource(id: string, file: Multer.File, title: string) {
     let folder = 'others';
     let fileType = 'file';
 
@@ -176,9 +164,7 @@ export class ModulesService {
       throw new NotFoundException('Module not found');
     }
 
-    const resource = module.resources.find(
-      (r: any) => r._id.toString() === resourceId,
-    );
+    const resource = (module.resources ?? []).find((r: any) => r._id.toString() === resourceId);
 
     if (!resource) {
       throw new NotFoundException('Resource not found');
@@ -191,9 +177,7 @@ export class ModulesService {
       }),
     );
 
-    module.resources = module.resources.filter(
-      (r: any) => r._id.toString() !== resourceId,
-    );
+    module.resources = (module.resources ?? []).filter((r: any) => r._id.toString() !== resourceId);
 
     await module.save();
 
@@ -202,27 +186,20 @@ export class ModulesService {
     };
   }
 
-  async updateResource(
-    moduleId: string,
-    resourceId: string,
-    title: string,
-  ) {
+  async updateResource(moduleId: string, resourceId: string, title: string) {
     const module = await this.moduleModel.findById(moduleId);
 
     if (!module) {
       throw new NotFoundException('Module not found');
     }
 
-    const resource = module.resources.find(
-      (r: any) => r._id.toString() === resourceId,
-    );
+    const resource = (module.resources ?? []).find((r: any) => r._id.toString() === resourceId);
 
     if (!resource) {
       throw new NotFoundException('Resource not found');
     }
 
     resource.title = title;
-
     await module.save();
 
     return module;

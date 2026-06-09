@@ -30,18 +30,19 @@ export class Module {
   status!: 'active' | 'inactive';
 
   @Prop([
-  {
-    title: String,
-    fileType: String, // video | image | pdf
-    fileUrl: String,
-    fileKey: String,
-  },
-])
-  resources!: {
+    {
+      title: String,
+      fileType: String, // video | image | pdf
+      fileUrl: String,
+      fileKey: String,
+    },
+  ])
+  resources?: {
     title: string;
     fileType: string;
     fileUrl: string;
     fileKey: string;
   }[];
 }
+
 export const ModuleSchema = SchemaFactory.createForClass(Module);

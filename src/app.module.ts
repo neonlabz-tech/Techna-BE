@@ -33,8 +33,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         uri:
-          config.get<string>('MONGODB_URI') ||
-          config.get<string>('MONGO_URI'),
+          config.get<string>('MONGODB_URI') || config.get<string>('MONGO_URI'),
       }),
     }),
 
