@@ -16,7 +16,7 @@ import {
 
 import { AttendanceService } from './attendance.service';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
-import { ScanQrDto } from './dto/scan-qr.dto';
+import { ScanAttendanceDto } from './dto/scan-attendance.dto';
 import { AttendanceReportQueryDto } from './dto/report-query.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 import { AttendanceDocument } from './schemas/attendance.schema';
@@ -31,9 +31,10 @@ export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
 
   @Post('scan-qr')
+  @Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.CREATED)
-  scanQrCode(@Body() scanQrDto: ScanQrDto): Promise<AttendanceDocument> {
-    return this.attendanceService.scanQrAndMarkAttendance(scanQrDto);
+  scanQr(@Body() scanAttendanceDto: ScanAttendanceDto) {
+    return this.attendanceService.scanQr(scanAttendanceDto);
   }
 
   @Post()

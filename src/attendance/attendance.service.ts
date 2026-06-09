@@ -5,8 +5,8 @@ import { isValidObjectId, Model } from 'mongoose';
 import { Student } from '../students/schemas/student.schema';
 import { Module as SchoolModule, SchoolModuleDocument } from '../modules/schemas/module.schema';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
-import { ScanQrDto } from './dto/scan-qr.dto';
 import { AttendanceReportQueryDto } from './dto/report-query.dto';
+import { ScanAttendanceDto } from './dto/scan-attendance.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 import { Attendance, AttendanceDocument } from './schemas/attendance.schema';
 import {
@@ -45,7 +45,9 @@ export class AttendanceService {
 
   async create(dto: CreateAttendanceDto): Promise<AttendanceDocument> {
     try {
-      const studentExists = await this.studentModel.findById(dto.studentId);
+      const studentExists = await this.studentModel.findOne({
+        studentId: dto.studentId,
+      });
 
       if (!studentExists) {
         throw new NotFoundException('Student not found');
@@ -55,26 +57,49 @@ export class AttendanceService {
         throw new BadRequestException('Invalid attendance status');
       }
 
+      await this.ensureUniqueAttendanceSession(dto);
+
+      const dateToUse = dto.date ?? new Date().toISOString();
+      const sessionDate = this.normalizeSessionDate(dateToUse);
+
       const attendance = await this.attendanceModel.create({
         ...dto,
         studentId: dto.studentId,
-        date: dto.date ?? new Date(),
+        date: dateToUse,
+        sessionDate,
       });
 
       return attendance;
-    } catch (error: unknown) {
-      throw new InternalServerErrorException(
-        error instanceof Error ? error.message : 'Failed to create attendance',
-      );
+    } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException ||
+        error instanceof ConflictException
+      ) {
+        throw error;
+      }
+
+      if ((error as any)?.code === 11000) {
+        throw new ConflictException('Attendance already marked for this session');
+      }
+
+      const message = error instanceof Error ? error.message : 'Internal server error';
+      throw new InternalServerErrorException(message);
     }
   }
 
-  async scanQrAndMarkAttendance(scanQrDto: ScanQrDto): Promise<AttendanceDocument> {
-    this.validateScanQrPayload(scanQrDto);
+  async scanQr(
+    dto: ScanAttendanceDto,
+  ): Promise<{ success: true; message: string; attendance: AttendanceDocument }> {
+    const qrToken = dto.qrToken?.trim();
 
-    const student = await this.studentModel.findOne({
-      qrToken: scanQrDto.qrToken.trim(),
-    });
+    if (!qrToken) {
+      throw new BadRequestException('QR token is required');
+    }
+
+    const student = await this.studentModel
+      .findOne({ qrToken })
+      .exec();
 
     if (!student) {
       throw new NotFoundException('Student not found');
@@ -84,45 +109,30 @@ export class AttendanceService {
       throw new BadRequestException('Student is not approved');
     }
 
-    let moduleId = scanQrDto.moduleId?.trim();
+    const moduleRecord = isValidObjectId(dto.moduleId)
+      ? await this.moduleModel.findById(dto.moduleId).exec()
+      : null;
 
-    if (!moduleId) {
-      if (!student.modules || student.modules.length === 0) {
-        throw new BadRequestException('Student is not enrolled in any modules');
-      }
-      moduleId = student.modules[0];
-    }
-
-    if (!isValidObjectId(moduleId)) {
-      throw new BadRequestException('Invalid moduleId format');
-    }
-
-    const module = await this.moduleModel.findById(moduleId);
-
-    if (!module) {
+    if (!moduleRecord) {
       throw new NotFoundException('Module not found');
     }
 
-    if (!student.modules.includes(moduleId)) {
-      throw new BadRequestException('Student not enrolled in this module');
-    }
-
-    const today = new Date().toISOString().split('T')[0];
-
-    await this.ensureAttendanceDoesNotExist(student.studentId, moduleId, today);
-
-    const attendanceData: CreateAttendanceDto = {
+    const attendance = await this.create({
       studentId: student.studentId,
-      moduleId,
-      moduleName: module.name,
-      date: today,
-      status: 'present',
-      markedAt: new Date().toISOString(),
-    };
+      moduleId: dto.moduleId,
+      moduleName: moduleRecord.name,
+      date: dto.date ?? new Date().toISOString(),
+      status: dto.status ?? 'present',
+      markedAt: dto.markedAt ?? new Date().toISOString(),
+    });
 
-    const attendance = new this.attendanceModel(attendanceData);
-    return attendance.save();
+    return {
+      success: true,
+      message: 'Attendance marked successfully',
+      attendance,
+    };
   }
+
 
   async findAll(): Promise<AttendanceDocument[]> {
     return this.attendanceModel
@@ -214,7 +224,7 @@ export class AttendanceService {
       const students = await this.studentModel
         .find(studentFilter)
         .select('studentId name batch modules status')
-        .lean()
+        .lean<{ studentId: string; name?: string; batch: string; modules: string[]; status: string }[]>()
         .exec();
 
       if (query.studentId && students.length === 0) {
@@ -285,90 +295,6 @@ export class AttendanceService {
     }
   }
 
-  private validateObjectId(id: string): void {
-    if (!isValidObjectId(id)) {
-      throw new BadRequestException('Invalid ID');
-    }
-  }
-
-  private validateScanQrPayload(dto: ScanQrDto): void {
-    if (!dto || typeof dto !== 'object' || Array.isArray(dto)) {
-      throw new BadRequestException('Invalid payload');
-    }
-
-    this.validateRequiredString(dto.qrToken, 'qrToken');
-
-    if (dto.moduleId !== undefined) {
-      this.validateOptionalString(dto.moduleId, 'moduleId');
-    }
-  }
-
-  private validateUpdatePayload(dto: UpdateAttendanceDto): void {
-    if (!dto || typeof dto !== 'object' || Array.isArray(dto)) {
-      throw new BadRequestException('Invalid payload');
-    }
-
-    if (Object.keys(dto).length === 0) {
-      throw new BadRequestException('At least one attendance field is required');
-    }
-
-    this.validateOptionalString(dto.studentId, 'studentId');
-    this.validateOptionalString(dto.moduleId, 'moduleId');
-    this.validateOptionalString(dto.moduleName, 'moduleName');
-    this.validateOptionalString(dto.date, 'date');
-    this.validateOptionalString(dto.markedAt, 'markedAt');
-    this.validateStatus(dto.status);
-  }
-
-  private validateStatus(status?: AttendanceStatus): void {
-    if (status && !ATTENDANCE_STATUSES.includes(status)) {
-      throw new BadRequestException('Status must be present or absent');
-    }
-  }
-
-  private validateRequiredString(value: unknown, fieldName: string): void {
-    if (typeof value !== 'string' || value.trim().length === 0) {
-      throw new BadRequestException(`${fieldName} is required`);
-    }
-  }
-
-  private validateOptionalString(value: unknown, fieldName: string): void {
-    if (value !== undefined && typeof value !== 'string') {
-      throw new BadRequestException(`${fieldName} must be a string`);
-    }
-  }
-
-  private async ensureAttendanceDoesNotExist(
-    studentId: string,
-    moduleId: string,
-    date: string,
-    excludedId?: string,
-  ): Promise<void> {
-    const exists = await this.attendanceModel.findOne({
-      studentId,
-      moduleId,
-      date,
-      ...(excludedId ? { _id: { $ne: excludedId } } : {}),
-    });
-
-    if (exists) {
-      throw new ConflictException('Attendance already exists for this student/module/date');
-    }
-  }
-
-  private async ensureUpdateDoesNotCreateDuplicate(
-    id: string,
-    dto: UpdateAttendanceDto,
-  ): Promise<void> {
-    const current = await this.findOne(id);
-
-    const studentId = dto.studentId ?? current.studentId;
-    const moduleId = dto.moduleId ?? current.moduleId;
-    const date = dto.date ?? current.date;
-
-    await this.ensureAttendanceDoesNotExist(studentId, moduleId, date, id);
-  }
-
   private buildDateFilter(
     date?: string,
     from?: string,
@@ -399,6 +325,30 @@ export class AttendanceService {
       ...(from ? { $gte: from } : {}),
       ...(to ? { $lte: to } : {}),
     };
+  }
+
+  private normalizeSessionDate(date: string): string {
+    return new Date(date).toISOString().split('T')[0];
+  }
+
+  private async ensureUniqueAttendanceSession(
+    dto: CreateAttendanceDto,
+  ): Promise<void> {
+    const normalizedDate = this.normalizeSessionDate(dto.date);
+
+    const existing = await this.attendanceModel
+      .findOne({
+        studentId: dto.studentId,
+        moduleId: dto.moduleId,
+        date: { $regex: `^${normalizedDate}` },
+      })
+      .exec();
+
+    if (existing) {
+      throw new ConflictException(
+        'Attendance already marked for this session',
+      );
+    }
   }
 
   private assertDateString(value: string, field: string): void {

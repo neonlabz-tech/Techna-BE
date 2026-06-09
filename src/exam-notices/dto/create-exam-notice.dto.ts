@@ -10,53 +10,53 @@ import {
 } from 'class-validator';
 
 export class CreateExamNoticeDto {
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Title must be a string' })
+  @IsNotEmpty({ message: 'Title is required' })
   title: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Module ID must be a string' })
+  @IsNotEmpty({ message: 'Module ID is required' })
   moduleId: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Module name must be a string' })
+  @IsNotEmpty({ message: 'Module name is required' })
   moduleName: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Batch must be a string' })
+  @IsNotEmpty({ message: 'Batch is required' })
   batch: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Date must be a string' })
+  @IsNotEmpty({ message: 'Date is required' })
   date: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Start time must be a string' })
+  @IsNotEmpty({ message: 'Start time is required' })
   startTime: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'End time must be a string' })
+  @IsNotEmpty({ message: 'End time is required' })
   endTime: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Venue must be a string' })
+  @IsNotEmpty({ message: 'Venue is required' })
   venue: string;
 
   @IsOptional()
-  @IsString()
+  @IsString({ message: 'Description must be a string' })
   description?: string;
 
   @Type(() => Number)
-  @IsNumber()
-  @Min(0)
+  @IsNumber({}, { message: 'Total marks must be a number' })
+  @Min(0, { message: 'Total marks must be greater than or equal to 0' })
   totalMarks: number;
 
-  @IsString()
-  @IsIn(['upcoming', 'ongoing', 'completed'])
+  @IsString({ message: 'Status must be a string' })
+  @IsIn(['upcoming', 'ongoing', 'completed'], { message: 'Status must be either upcoming, ongoing, or completed' })
   status: 'upcoming' | 'ongoing' | 'completed';
 
   @IsOptional()
   @Type(() => Boolean)
-  @IsBoolean()
+  @IsBoolean({ message: 'Published status must be a boolean' })
   isPublished?: boolean;
 }

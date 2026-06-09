@@ -1,3 +1,4 @@
+/// <reference types="multer" />
 import {
   Controller,
   Get,
@@ -62,7 +63,7 @@ export class ModulesController {
   @UseInterceptors(FileInterceptor('file'))
   uploadResource(
     @Param('id') id: string,
-    @UploadedFile() file: Multer.File,
+    @UploadedFile() file: Express.Multer.File,
     @Body('title') title: string,
   ) {
     return this.modulesService.uploadResource(id, file, title);

@@ -6,33 +6,33 @@ export type SchoolModuleDocument = HydratedDocument<Module>;
 @Schema({ timestamps: true })
 export class Module {
   @Prop({ required: true })
-  name: string;
+  name!: string;
 
   @Prop({ required: true })
-  teacherId: string;
+  teacherId!: string;
 
   @Prop({ required: true })
-  teacherName: string;
+  teacherName!: string;
 
   @Prop({ required: true })
-  description: string;
+  description!: string;
 
   @Prop({ required: true })
-  duration: string;
+  duration!: string;
 
   @Prop({ required: true, min: 0 })
-  fee: number;
+  fee!: number;
 
   @Prop({ required: true })
-  batch: string;
+  batch!: string;
 
   @Prop({ required: true, enum: ['active', 'inactive'], default: 'active' })
-  status: 'active' | 'inactive';
+  status!: 'active' | 'inactive';
 
   @Prop([
     {
       title: String,
-      fileType: String,
+      fileType: String, // video | image | pdf
       fileUrl: String,
       fileKey: String,
     },
