@@ -23,10 +23,10 @@ export enum OlGrade {
 @Schema({ _id: false })
 export class OlResultRow {
   @Prop({ required: true })
-  year: string;
+  year!: string;
 
   @Prop({ required: true })
-  indexNumber: string;
+  indexNumber!: string;
 
   @Prop({ enum: Object.values(OlGrade), default: null })
   english?: string;
@@ -93,10 +93,10 @@ export class Student {
   // ── EXISTING: System / identity fields ─────────────────────────────────────
 
   @Prop({ required: true, unique: true })
-  studentId: string; // e.g. STU001 (sequential counter)
+  studentId!: string; // e.g. STU001 (sequential counter)
 
   @Prop({ required: true, unique: true })
-  qrToken: string;
+  qrToken!: string;
 
   @Prop()
   qrCode?: string;
@@ -104,19 +104,19 @@ export class Student {
   // ── EXISTING: Core account fields ──────────────────────────────────────────
 
   @Prop({ required: true, lowercase: true, trim: true })
-  email: string;
+  email!: string;
 
   @Prop({ required: true })
-  password: string; // stored hashed
+  password!: string; // stored hashed
 
   @Prop({ required: true })
-  phone: string; // kept for backward compatibility (maps to whatsappNo)
+  phone!: string; // kept for backward compatibility (maps to whatsappNo)
 
   @Prop({ required: true })
-  batch: string;
+  batch!: string;
 
   @Prop({ type: [String], default: [] })
-  modules: string[]; // kept for backward compatibility
+  modules!: string[]; // kept for backward compatibility
 
   // ── EXISTING: Status & approval ────────────────────────────────────────────
 
@@ -125,10 +125,10 @@ export class Student {
     enum: ['pending', 'approved', 'rejected'],
     default: 'pending',
   })
-  status: 'pending' | 'approved' | 'rejected';
+  status!: 'pending' | 'approved' | 'rejected';
 
   @Prop()
-  enrolledAt: string;
+  enrolledAt!: string;
 
   @Prop()
   approvedAt?: string;
