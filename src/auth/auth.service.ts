@@ -11,19 +11,19 @@ export class AuthService {
   constructor(
     private jwtService: JwtService,
     private configService: ConfigService,
-    // Inject Mongoose models for Student and Teacher collections
     @InjectModel('Student') private studentModel: Model<any>,
     @InjectModel('Teacher') private teacherModel: Model<any>,
   ) {}
 
   /**
-   * Authenticates a user by email and password.
-   * Checks admin credentials first (env-based), then looks up
-   * the user in the Student and Teacher collections respectively.
-   * Returns a signed JWT and the resolved role on success.
+   * Unified login for Admin, Teacher, and Student.
+   * Admin credentials come from environment variables (not stored in DB).
+   * For students, checks that the account is approved before issuing a token.
    */
   async login(email: string, password: string) {
     const normalizedEmail = email.toLowerCase().trim();
+
+    // ── Admin check (env-based, no DB lookup needed) ──────────────────────
     const adminEmail = this.configService.get<string>('ADMIN_EMAIL');
     const adminPassword = this.configService.get<string>('ADMIN_PASSWORD');
 
@@ -36,11 +36,16 @@ export class AuthService {
       return { access_token: token, role: Role.ADMIN };
     }
 
-    let user = await this.studentModel.findOne({ email: normalizedEmail }).lean();
+    // ── Database lookup — try Student first, then Teacher ─────────────────
+    let user = await this.studentModel
+      .findOne({ email: normalizedEmail })
+      .lean();
     let role: Role = Role.STUDENT;
 
     if (!user) {
-      user = await this.teacherModel.findOne({ email: normalizedEmail }).lean();
+      user = await this.teacherModel
+        .findOne({ email: normalizedEmail })
+        .lean();
       role = Role.TEACHER;
     }
 
@@ -48,11 +53,30 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    // ── Password verification ─────────────────────────────────────────────
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    // ── Status check for students (teachers have no status field) ─────────
+    if (role === Role.STUDENT) {
+      if (user.status === 'pending') {
+        throw new UnauthorizedException(
+          'Your registration is pending admin approval. You will be notified once approved.',
+        );
+      }
+      if (user.status === 'rejected') {
+        const reason = user.rejectionReason
+          ? ` Reason: ${user.rejectionReason}`
+          : '';
+        throw new UnauthorizedException(
+          `Your registration was rejected.${reason}`,
+        );
+      }
+    }
+
+    // ── Issue JWT ─────────────────────────────────────────────────────────
     const token = this.jwtService.sign({
       sub: user._id,
       email: user.email,
@@ -62,21 +86,56 @@ export class AuthService {
     return { access_token: token, role };
   }
 
+  private blacklistedTokens = new Set<string>();
+
+  /**
+   * Student-specific login endpoint.
+   * Only looks up the Student collection and enforces the approval status check.
+   */
   async studentLogin(email: string, password: string) {
     const normalizedEmail = email.toLowerCase().trim();
-    const user = await this.studentModel.findOne({ email: normalizedEmail }).lean();
+
+    const user = await this.studentModel
+      .findOne({ email: normalizedEmail })
+      .lean();
+
     if (!user) {
+      // Intentionally vague — don't reveal whether the email exists
       throw new UnauthorizedException('Invalid student credentials');
     }
+
+    // ── Password check ────────────────────────────────────────────────────
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       throw new UnauthorizedException('Invalid student credentials');
     }
+
+    // ── FIXED: Status gate — block login for non-approved students ────────
+    //
+    // Previously missing — a PENDING or REJECTED student could log in and
+    // receive a valid JWT. This is now corrected.
+    if (user.status === 'pending') {
+      throw new UnauthorizedException(
+        'Your registration is pending admin approval. You will be notified once approved.',
+      );
+    }
+
+    if (user.status === 'rejected') {
+      const reason = user.rejectionReason
+        ? ` Reason: ${user.rejectionReason}`
+        : '';
+      throw new UnauthorizedException(
+        `Your registration was rejected.${reason}`,
+      );
+    }
+
+    // ── Only APPROVED students reach this point ───────────────────────────
     const token = this.jwtService.sign({
       sub: user._id,
       email: user.email,
       role: Role.STUDENT,
     });
+
     return { access_token: token, role: Role.STUDENT };
   }
 
@@ -99,33 +158,27 @@ export class AuthService {
         role: Role.ADMIN,
       };
     } else if (user.role === Role.STUDENT) {
-      const student = await this.studentModel.findById(user.userId).select('-password').lean();
+      const student = await this.studentModel
+        .findById(user.userId)
+        .select('-password')
+        .lean();
       if (!student) {
         throw new UnauthorizedException('Student profile not found');
       }
-      return {
-        ...student,
-        role: Role.STUDENT,
-      };
+      return { ...student, role: Role.STUDENT };
     } else if (user.role === Role.TEACHER) {
-      const teacher = await this.teacherModel.findById(user.userId).select('-password').lean();
+      const teacher = await this.teacherModel
+        .findById(user.userId)
+        .select('-password')
+        .lean();
       if (!teacher) {
         throw new UnauthorizedException('Teacher profile not found');
       }
-      return {
-        ...teacher,
-        role: Role.TEACHER,
-      };
+      return { ...teacher, role: Role.TEACHER };
     }
     throw new UnauthorizedException('Invalid user role');
   }
 
-  private blacklistedTokens = new Set<string>();
-
-  /**
-   * Hashes a plain-text password using bcrypt with a cost factor of 10.
-   * Used by registration and password-reset flows.
-   */
   async hashPassword(plain: string): Promise<string> {
     return bcrypt.hash(plain, 10);
   }
