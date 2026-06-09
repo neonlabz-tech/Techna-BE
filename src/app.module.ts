@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
+import { APP_INTERCEPTOR } from '@nestjs/core';      // ← removed APP_GUARD import
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 
@@ -9,6 +9,8 @@ import { AppService } from './app.service';
 import { AttendanceModule } from './attendance/attendance.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { validateEnvironment } from './config/env.validation';
+
+import { ExamNoticesModule } from './exam-notices/exam-notices.module';
 import { ModulesModule } from './modules/modules.module';
 import { PaymentsModule } from './payments/payments.module';
 import { StorageModule } from './storage/storage.module';
@@ -16,19 +18,16 @@ import { StudentsModule } from './students/students.module';
 import { TeachersModule } from './teachers/teachers.module';
 import { AuthModule } from './auth/auth.module';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
-import { JwtAuthGuard } from './auth/jwt-auth.guard';
-import { RolesGuard } from './auth/roles.guard';
+// ← removed JwtAuthGuard and RolesGuard imports (no longer needed here)
 
 @Module({
   imports: [
-    // Config setup (safe + validated)
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
       validate: validateEnvironment,
     }),
 
-    // MongoDB async config (best practice)
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -39,9 +38,9 @@ import { RolesGuard } from './auth/roles.guard';
       }),
     }),
 
-    // Feature modules
     StudentsModule,
     TeachersModule,
+    ExamNoticesModule,
     ModulesModule,
     AttendanceModule,
     DashboardModule,
@@ -53,8 +52,8 @@ import { RolesGuard } from './auth/roles.guard';
   providers: [
     AppService,
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
-    { provide: APP_GUARD, useClass: JwtAuthGuard },
-    { provide: APP_GUARD, useClass: RolesGuard },
+    // ← REMOVED: { provide: APP_GUARD, useClass: JwtAuthGuard },
+    // ← REMOVED: { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
 export class AppModule {}
