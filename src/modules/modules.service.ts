@@ -113,7 +113,7 @@ export class ModulesService {
     },
   });
 
-  async uploadResource(id: string, file: Multer.File, title: string) {
+  async uploadResource(id: string, file: Express.Multer.File, title: string) {
     let folder = 'others';
     let fileType = 'file';
 

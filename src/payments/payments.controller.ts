@@ -9,6 +9,7 @@ import {
   Request,
   ForbiddenException,
 } from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -18,6 +19,7 @@ import { CreatePaymentDto } from './dto/create-payment.dto';
 import { PaymentTrackingQueryDto } from './dto/payment-tracking-query.dto';
 
 @Controller('payments')
+@ApiBearerAuth('access-token')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}

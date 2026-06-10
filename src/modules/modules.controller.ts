@@ -12,11 +12,13 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiBody, ApiConsumes } from '@nestjs/swagger';
 import type { Multer } from 'multer';
 
 import { ModulesService } from './modules.service';
 import { CreateModuleDto } from './dto/create-module.dto';
 import { UpdateModuleDto } from './dto/update-module.dto';
+import { UpdateResourceDto } from './dto/update-resource.dto';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -24,6 +26,7 @@ import { Roles } from '../decorators/roles.decorator';
 import { Role } from '../enums/role.enum';
 
 @Controller('modules')
+@ApiBearerAuth('access-token')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ModulesController {
   constructor(private readonly modulesService: ModulesService) {}
@@ -60,6 +63,17 @@ export class ModulesController {
 
   @Post(':id/upload-resource')
   @Roles(Role.ADMIN)
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file', 'title'],
+      properties: {
+        file: { type: 'string', format: 'binary' },
+        title: { type: 'string', example: 'Lecture 01 notes' },
+      },
+    },
+  })
   @UseInterceptors(FileInterceptor('file'))
   uploadResource(
     @Param('id') id: string,
@@ -83,8 +97,8 @@ export class ModulesController {
   updateResource(
     @Param('moduleId') moduleId: string,
     @Param('resourceId') resourceId: string,
-    @Body('title') title: string,
+    @Body() body: UpdateResourceDto,
   ) {
-    return this.modulesService.updateResource(moduleId, resourceId, title);
+    return this.modulesService.updateResource(moduleId, resourceId, body.title);
   }
 }

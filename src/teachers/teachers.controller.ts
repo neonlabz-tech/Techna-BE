@@ -10,13 +10,17 @@ import {
   Request,
   ForbiddenException,
 } from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
 import { TeachersService } from './teachers.service';
+import { CreateTeacherDto } from './dto/create-teacher.dto';
+import { UpdateTeacherDto } from './dto/update-teacher.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../decorators/roles.decorator';
 import { Role } from '../enums/role.enum';
 
 @Controller('teachers')
+@ApiBearerAuth('access-token')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class TeachersController {
   constructor(private readonly teachersService: TeachersService) {}
@@ -41,14 +45,14 @@ export class TeachersController {
   // ─── POST /api/teachers  (admin only) ──────────────────────────────────────
   @Post()
   @Roles(Role.ADMIN)
-  create(@Body() body: any) {
+  create(@Body() body: CreateTeacherDto) {
     return this.teachersService.create(body);
   }
 
   // ─── PATCH /api/teachers/:id  (admin only) ─────────────────────────────────
   @Patch(':id')
   @Roles(Role.ADMIN)
-  update(@Param('id') id: string, @Body() body: any) {
+  update(@Param('id') id: string, @Body() body: UpdateTeacherDto) {
     return this.teachersService.update(id, body);
   }
 

@@ -5,11 +5,12 @@ import {
   Body,
   UseGuards,
   Request,
-  Headers,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiUnauthorizedResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
+import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { RolesGuard } from './roles.guard';
 import { Roles } from '../decorators/roles.decorator';
@@ -24,28 +25,33 @@ export class AuthController {
   @Post('login')
   @Public()
   @HttpCode(HttpStatus.OK)
-  async login(@Body() body: { email: string; password: string }) {
+  async login(@Body() body: LoginDto) {
     return this.authService.login(body.email, body.password);
   }
 
   // ─── POST /auth/student/login  (student-specific login) ─────────────────────
   @Post('student/login')
   @HttpCode(HttpStatus.OK)
-  async studentLogin(@Body() body: { email: string; password: string }) {
+  async studentLogin(@Body() body: LoginDto) {
     return this.authService.studentLogin(body.email, body.password);
   }
 
   // ─── POST /auth/logout  (any authenticated user) ─────────────────────────────
   @Post('logout')
+  @ApiBearerAuth('access-token')
+  @ApiUnauthorizedResponse({ description: 'Missing, invalid, or expired JWT' })
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async logout(@Headers('authorization') authHeader: string) {
+  async logout(@Request() req: any) {
+    const authHeader = req.headers?.authorization;
     const token = authHeader?.replace('Bearer ', '');
     return this.authService.logout(token);
   }
 
   // ─── GET /auth/session  (returns current logged-in user info) ────────────────
   @Get('session')
+  @ApiBearerAuth('access-token')
+  @ApiUnauthorizedResponse({ description: 'Missing, invalid, or expired JWT' })
   @UseGuards(JwtAuthGuard)
   async getSession(@Request() req: any) {
     return this.authService.getSession(req.user);
@@ -53,6 +59,8 @@ export class AuthController {
 
   // ─── GET /auth/profile  (any authenticated user) ───────────────────────────
   @Get('profile')
+  @ApiBearerAuth('access-token')
+  @ApiUnauthorizedResponse({ description: 'Missing, invalid, or expired JWT' })
   @UseGuards(JwtAuthGuard)
   getProfile(@Request() req: any) {
     return { message: 'Authenticated', user: req.user };
@@ -60,6 +68,8 @@ export class AuthController {
 
   // ─── GET /auth/admin  (admin only) ─────────────────────────────────────────
   @Get('admin')
+  @ApiBearerAuth('access-token')
+  @ApiUnauthorizedResponse({ description: 'Missing, invalid, or expired JWT' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   adminOnly() {
@@ -68,6 +78,8 @@ export class AuthController {
 
   // ─── GET /auth/teacher  (admin + teacher) ───────────────────────────────────
   @Get('teacher')
+  @ApiBearerAuth('access-token')
+  @ApiUnauthorizedResponse({ description: 'Missing, invalid, or expired JWT' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.TEACHER)
   teacherOnly() {
@@ -76,6 +88,8 @@ export class AuthController {
 
   // ─── GET /auth/student  (admin + student) ───────────────────────────────────
   @Get('student')
+  @ApiBearerAuth('access-token')
+  @ApiUnauthorizedResponse({ description: 'Missing, invalid, or expired JWT' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.STUDENT)
   studentOnly() {

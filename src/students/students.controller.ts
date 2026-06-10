@@ -11,6 +11,7 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../decorators/roles.decorator';
@@ -18,11 +19,9 @@ import { Role } from '../enums/role.enum';
 import { RolesGuard } from '../auth/roles.guard';
 import { RegisterStudentDto } from './dto/register-student.dto';
 import { RejectStudentDto } from './dto/reject-student.dto';
+import { CreateStudentDto } from './dto/create-student.dto';
+import { UpdateStudentDto } from './dto/update-student.dto';
 import { StudentsService } from './students.service';
-import type {
-  CreateStudentPayload,
-  UpdateStudentPayload,
-} from './students.service';
 
 interface AuthenticatedRequest {
   user: {
@@ -59,6 +58,7 @@ export class StudentsController {
   // GET /students?status=approved
   // GET /students?status=rejected
   @Get()
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   findAll(@Query('status') status?: 'pending' | 'approved' | 'rejected') {
@@ -69,6 +69,7 @@ export class StudentsController {
   //
   // GET /students/:id
   @Get(':id')
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.STUDENT)
   async findOne(
@@ -89,6 +90,7 @@ export class StudentsController {
   //
   // GET /students/:id/enrolment-history
   @Get(':id/enrolment-history')
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.STUDENT)
   getEnrolmentHistory(
@@ -106,9 +108,10 @@ export class StudentsController {
   //
   // POST /students
   @Post()
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  create(@Body() body: CreateStudentPayload) {
+  create(@Body() body: CreateStudentDto) {
     return this.studentsService.create(body);
   }
 
@@ -116,9 +119,10 @@ export class StudentsController {
   //
   // PATCH /students/:id
   @Patch(':id')
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  update(@Param('id') id: string, @Body() body: UpdateStudentPayload) {
+  update(@Param('id') id: string, @Body() body: UpdateStudentDto) {
     return this.studentsService.update(id, body);
   }
 
@@ -126,6 +130,7 @@ export class StudentsController {
   //
   // DELETE /students/:id
   @Delete(':id')
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   remove(@Param('id') id: string) {
@@ -137,6 +142,7 @@ export class StudentsController {
   //
   // PATCH /students/:id/approve
   @Patch(':id/approve')
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   approveStudent(@Param('id') id: string) {
@@ -149,6 +155,7 @@ export class StudentsController {
   // PATCH /students/:id/reject
   // Body: { reason: string }
   @Patch(':id/reject')
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   rejectStudent(
@@ -162,6 +169,7 @@ export class StudentsController {
   //
   // POST /students/:studentId/qr-code
   @Post(':studentId/qr-code')
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   generateStudentQrCode(@Param('studentId') studentId: string) {
