@@ -9,4 +9,8 @@ export class DashboardController {
   getSummary() {
     return this.dashboardService.getSummary();
   }
+  @Get('revenue')
+  getRevenue() {
+    return this.dashboardService.getRevenue();
+  }
 }

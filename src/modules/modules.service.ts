@@ -4,6 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import type { Multer } from 'multer';
+import { Express } from 'express';
 
 import { Module, SchoolModuleDocument } from './schemas/module.schema';
 import { CreateModuleDto } from './dto/create-module.dto';
@@ -113,8 +114,8 @@ export class ModulesService {
     },
   });
 
-  async uploadResource(id: string, file: Multer.File, title: string) {
-    let folder = 'others';
+async uploadResource(id: string, file: Express.Multer.File, title: string) {
+      let folder = 'others';
     let fileType = 'file';
 
     if (file.mimetype.startsWith('video/')) {

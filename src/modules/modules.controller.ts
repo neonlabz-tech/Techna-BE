@@ -24,12 +24,12 @@ import { Roles } from '../decorators/roles.decorator';
 import { Role } from '../enums/role.enum';
 
 @Controller('modules')
-@UseGuards(JwtAuthGuard, RolesGuard)
+//@UseGuards(JwtAuthGuard, RolesGuard)
 export class ModulesController {
   constructor(private readonly modulesService: ModulesService) {}
 
   @Post()
-  @Roles(Role.ADMIN)
+ // @Roles(Role.ADMIN)
   create(@Body() createModuleDto: CreateModuleDto) {
     return this.modulesService.create(createModuleDto);
   }
@@ -41,25 +41,25 @@ export class ModulesController {
   }
 
   @Get(':id')
-  @Roles(Role.ADMIN, Role.TEACHER, Role.STUDENT)
+ // @Roles(Role.ADMIN, Role.TEACHER, Role.STUDENT)
   findOne(@Param('id') id: string) {
     return this.modulesService.findOne(id);
   }
 
   @Patch(':id')
-  @Roles(Role.ADMIN)
+ //@Roles(Role.ADMIN)
   update(@Param('id') id: string, @Body() updateModuleDto: UpdateModuleDto) {
     return this.modulesService.update(id, updateModuleDto);
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN)
+ // @Roles(Role.ADMIN)
   remove(@Param('id') id: string) {
     return this.modulesService.remove(id);
   }
 
   @Post(':id/upload-resource')
-  @Roles(Role.ADMIN)
+ // @Roles(Role.ADMIN)
   @UseInterceptors(FileInterceptor('file'))
   uploadResource(
     @Param('id') id: string,
@@ -70,7 +70,7 @@ export class ModulesController {
   }
 
   @Delete(':moduleId/resources/:resourceId')
-  @Roles(Role.ADMIN)
+  //@Roles(Role.ADMIN)
   deleteResource(
     @Param('moduleId') moduleId: string,
     @Param('resourceId') resourceId: string,
@@ -79,7 +79,7 @@ export class ModulesController {
   }
 
   @Patch(':moduleId/resources/:resourceId')
-  @Roles(Role.ADMIN)
+ // @Roles(Role.ADMIN)
   updateResource(
     @Param('moduleId') moduleId: string,
     @Param('resourceId') resourceId: string,
