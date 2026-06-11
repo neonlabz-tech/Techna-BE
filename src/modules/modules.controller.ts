@@ -18,7 +18,6 @@ import type { Multer } from 'multer';
 import { ModulesService } from './modules.service';
 import { CreateModuleDto } from './dto/create-module.dto';
 import { UpdateModuleDto } from './dto/update-module.dto';
-import { UpdateResourceDto } from './dto/update-resource.dto';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -94,11 +93,20 @@ export class ModulesController {
 
   @Patch(':moduleId/resources/:resourceId')
   @Roles(Role.ADMIN)
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['title'],
+      properties: {
+        title: { type: 'string', example: 'Updated lecture notes' },
+      },
+    },
+  })
   updateResource(
     @Param('moduleId') moduleId: string,
     @Param('resourceId') resourceId: string,
-    @Body() body: UpdateResourceDto,
+    @Body('title') title: string,
   ) {
-    return this.modulesService.updateResource(moduleId, resourceId, body.title);
+    return this.modulesService.updateResource(moduleId, resourceId, title);
   }
 }

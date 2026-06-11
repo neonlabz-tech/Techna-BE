@@ -5,12 +5,12 @@ import {
   Body,
   UseGuards,
   Request,
+  Headers,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiUnauthorizedResponse } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiUnauthorizedResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { RolesGuard } from './roles.guard';
 import { Roles } from '../decorators/roles.decorator';
@@ -24,15 +24,35 @@ export class AuthController {
   // ─── POST /auth/login ───────────────────────────────────────────────────────
   @Post('login')
   @Public()
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['email', 'password'],
+      properties: {
+        email: { type: 'string', example: 'admin@techna.com' },
+        password: { type: 'string', example: 'Admin@1234' },
+      },
+    },
+  })
   @HttpCode(HttpStatus.OK)
-  async login(@Body() body: LoginDto) {
+  async login(@Body() body: { email: string; password: string }) {
     return this.authService.login(body.email, body.password);
   }
 
   // ─── POST /auth/student/login  (student-specific login) ─────────────────────
   @Post('student/login')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['email', 'password'],
+      properties: {
+        email: { type: 'string', example: 'student@example.com' },
+        password: { type: 'string', example: 'password123' },
+      },
+    },
+  })
   @HttpCode(HttpStatus.OK)
-  async studentLogin(@Body() body: LoginDto) {
+  async studentLogin(@Body() body: { email: string; password: string }) {
     return this.authService.studentLogin(body.email, body.password);
   }
 
@@ -42,8 +62,7 @@ export class AuthController {
   @ApiUnauthorizedResponse({ description: 'Missing, invalid, or expired JWT' })
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async logout(@Request() req: any) {
-    const authHeader = req.headers?.authorization;
+  async logout(@Headers('authorization') authHeader: string) {
     const token = authHeader?.replace('Bearer ', '');
     return this.authService.logout(token);
   }

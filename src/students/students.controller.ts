@@ -11,7 +11,7 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../decorators/roles.decorator';
@@ -19,9 +19,11 @@ import { Role } from '../enums/role.enum';
 import { RolesGuard } from '../auth/roles.guard';
 import { RegisterStudentDto } from './dto/register-student.dto';
 import { RejectStudentDto } from './dto/reject-student.dto';
-import { CreateStudentDto } from './dto/create-student.dto';
-import { UpdateStudentDto } from './dto/update-student.dto';
 import { StudentsService } from './students.service';
+import type {
+  CreateStudentPayload,
+  UpdateStudentPayload,
+} from './students.service';
 
 interface AuthenticatedRequest {
   user: {
@@ -109,9 +111,31 @@ export class StudentsController {
   // POST /students
   @Post()
   @ApiBearerAuth('access-token')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['name', 'email', 'phone', 'batch'],
+      properties: {
+        name: { type: 'string', example: 'Kasun Perera' },
+        email: { type: 'string', example: 'kasun.perera@example.com' },
+        phone: { type: 'string', example: '0771234567' },
+        batch: { type: 'string', example: '2026 A/L' },
+        modules: {
+          type: 'array',
+          items: { type: 'string' },
+          example: ['Advanced ICT'],
+        },
+        address: { type: 'string', example: 'No. 20, Lake Road, Kandy' },
+        dob: { type: 'string', example: '2008-05-20' },
+        avatar: { type: 'string', example: 'https://example.com/avatar.jpg' },
+        parentName: { type: 'string', example: 'Nimal Perera' },
+        parentPhone: { type: 'string', example: '0712345678' },
+      },
+    },
+  })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  create(@Body() body: CreateStudentDto) {
+  create(@Body() body: CreateStudentPayload) {
     return this.studentsService.create(body);
   }
 
@@ -120,9 +144,30 @@ export class StudentsController {
   // PATCH /students/:id
   @Patch(':id')
   @ApiBearerAuth('access-token')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', example: 'Kasun Perera' },
+        email: { type: 'string', example: 'kasun.perera@example.com' },
+        phone: { type: 'string', example: '0771234567' },
+        batch: { type: 'string', example: '2026 A/L' },
+        modules: {
+          type: 'array',
+          items: { type: 'string' },
+          example: ['Advanced ICT'],
+        },
+        address: { type: 'string', example: 'No. 20, Lake Road, Kandy' },
+        dob: { type: 'string', example: '2008-05-20' },
+        avatar: { type: 'string', example: 'https://example.com/avatar.jpg' },
+        parentName: { type: 'string', example: 'Nimal Perera' },
+        parentPhone: { type: 'string', example: '0712345678' },
+      },
+    },
+  })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  update(@Param('id') id: string, @Body() body: UpdateStudentDto) {
+  update(@Param('id') id: string, @Body() body: UpdateStudentPayload) {
     return this.studentsService.update(id, body);
   }
 

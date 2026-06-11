@@ -12,8 +12,6 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { TeachersService } from './teachers.service';
-import { CreateTeacherDto } from './dto/create-teacher.dto';
-import { UpdateTeacherDto } from './dto/update-teacher.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../decorators/roles.decorator';
@@ -45,14 +43,14 @@ export class TeachersController {
   // ─── POST /api/teachers  (admin only) ──────────────────────────────────────
   @Post()
   @Roles(Role.ADMIN)
-  create(@Body() body: CreateTeacherDto) {
+  create(@Body() body: any) {
     return this.teachersService.create(body);
   }
 
   // ─── PATCH /api/teachers/:id  (admin only) ─────────────────────────────────
   @Patch(':id')
   @Roles(Role.ADMIN)
-  update(@Param('id') id: string, @Body() body: UpdateTeacherDto) {
+  update(@Param('id') id: string, @Body() body: any) {
     return this.teachersService.update(id, body);
   }
 
