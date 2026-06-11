@@ -33,7 +33,9 @@ export class StorageService {
     @Inject(STORAGE_CONFIG_TOKEN) private readonly storageConfig: StorageConfig,
   ) {
     this.bucketName = storageConfig.bucketName?.trim() || null;
-    this.publicBaseUrl = storageConfig.publicBaseUrl?.trim() || null;
+    this.publicBaseUrl = this.normalizePublicBaseUrl(
+      storageConfig.publicBaseUrl,
+    );
     this.client = this.buildClient(storageConfig);
 
     if (!this.client) {
@@ -144,6 +146,27 @@ export class StorageService {
         ? this.publicBaseUrl
         : `${this.publicBaseUrl}/`,
     ).toString();
+  }
+
+  private normalizePublicBaseUrl(value?: string): string | null {
+    const cleaned = value?.trim().replace(/\*/g, '');
+
+    if (!cleaned) {
+      return null;
+    }
+
+    try {
+      const url = new URL(cleaned);
+      url.pathname = url.pathname.replace(/\/+$/, '');
+      url.search = '';
+      url.hash = '';
+      return url.toString();
+    } catch {
+      this.logger.warn(
+        'Invalid CLOUDFLARE_R2_PUBLIC_BASE_URL. QR image public URLs will not be generated.',
+      );
+      return null;
+    }
   }
 
   private getDefaultEndpoint(accountId: string): string {

@@ -1,17 +1,16 @@
 /// <reference types="multer" />
+
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { Model } from 'mongoose';
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
-import type { Multer } from 'multer';
-import { Express } from 'express';
 
 import { Module, SchoolModuleDocument } from './schemas/module.schema';
 import { CreateModuleDto } from './dto/create-module.dto';
 import { UpdateModuleDto } from './dto/update-module.dto';
 import {
-  NotFoundException,
   InternalServerErrorException,
+  NotFoundException,
 } from '../common/exceptions';
 
 @Injectable()
@@ -21,13 +20,23 @@ export class ModulesService {
     private readonly moduleModel: Model<SchoolModuleDocument>,
   ) {}
 
+  private readonly s3 = new S3Client({
+    region: 'auto',
+    endpoint: process.env.CLOUDFLARE_R2_ENDPOINT,
+    credentials: {
+      accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID!,
+      secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY!,
+    },
+  });
+
   async create(createModuleDto: CreateModuleDto) {
     try {
       const newModule = new this.moduleModel(createModuleDto);
       return await newModule.save();
     } catch (error: unknown) {
       throw new InternalServerErrorException(
-        'Failed to create module: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        'Failed to create module: ' +
+          (error instanceof Error ? error.message : 'Unknown error'),
       );
     }
   }
@@ -37,7 +46,8 @@ export class ModulesService {
       return await this.moduleModel.find().sort({ createdAt: -1 });
     } catch (error: unknown) {
       throw new InternalServerErrorException(
-        'Failed to fetch modules: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        'Failed to fetch modules: ' +
+          (error instanceof Error ? error.message : 'Unknown error'),
       );
     }
   }
@@ -55,8 +65,10 @@ export class ModulesService {
       if (error instanceof NotFoundException) {
         throw error;
       }
+
       throw new InternalServerErrorException(
-        'Failed to fetch module: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        'Failed to fetch module: ' +
+          (error instanceof Error ? error.message : 'Unknown error'),
       );
     }
   }
@@ -78,8 +90,10 @@ export class ModulesService {
       if (error instanceof NotFoundException) {
         throw error;
       }
+
       throw new InternalServerErrorException(
-        'Failed to update module: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        'Failed to update module: ' +
+          (error instanceof Error ? error.message : 'Unknown error'),
       );
     }
   }
@@ -99,23 +113,20 @@ export class ModulesService {
       if (error instanceof NotFoundException) {
         throw error;
       }
+
       throw new InternalServerErrorException(
-        'Failed to delete module: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        'Failed to delete module: ' +
+          (error instanceof Error ? error.message : 'Unknown error'),
       );
     }
   }
 
-  private readonly s3 = new S3Client({
-    region: 'auto',
-    endpoint: process.env.CLOUDFLARE_R2_ENDPOINT,
-    credentials: {
-      accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID!,
-      secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY!,
-    },
-  });
-
-async uploadResource(id: string, file: Express.Multer.File, title: string) {
-      let folder = 'others';
+  async uploadResource(
+    id: string,
+    file: Express.Multer.File,
+    title: string,
+  ) {
+    let folder = 'others';
     let fileType = 'file';
 
     if (file.mimetype.startsWith('video/')) {
@@ -165,7 +176,9 @@ async uploadResource(id: string, file: Express.Multer.File, title: string) {
       throw new NotFoundException('Module not found');
     }
 
-    const resource = (module.resources ?? []).find((r: any) => r._id.toString() === resourceId);
+    const resource = (module.resources ?? []).find(
+      (r: any) => r._id.toString() === resourceId,
+    );
 
     if (!resource) {
       throw new NotFoundException('Resource not found');
@@ -178,7 +191,9 @@ async uploadResource(id: string, file: Express.Multer.File, title: string) {
       }),
     );
 
-    module.resources = (module.resources ?? []).filter((r: any) => r._id.toString() !== resourceId);
+    module.resources = (module.resources ?? []).filter(
+      (r: any) => r._id.toString() !== resourceId,
+    );
 
     await module.save();
 
@@ -194,7 +209,9 @@ async uploadResource(id: string, file: Express.Multer.File, title: string) {
       throw new NotFoundException('Module not found');
     }
 
-    const resource = (module.resources ?? []).find((r: any) => r._id.toString() === resourceId);
+    const resource = (module.resources ?? []).find(
+      (r: any) => r._id.toString() === resourceId,
+    );
 
     if (!resource) {
       throw new NotFoundException('Resource not found');
