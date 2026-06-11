@@ -7,6 +7,7 @@ import { Counter, CounterSchema } from './schemas/counter.schema';
 import { Student, StudentSchema } from './schemas/student.schema';
 import { StudentsController } from './students.controller';
 import { StudentsService } from './students.service';
+import { StorageModule } from '../storage/storage.module';
 
 @Module({
   imports: [
@@ -14,7 +15,9 @@ import { StudentsService } from './students.service';
     MongooseModule.forFeature([
       { name: Student.name, schema: StudentSchema },
       { name: Counter.name, schema: CounterSchema },
+      
     ]),
+    StorageModule,
   ],
   controllers: [StudentsController],
   providers: [StudentsService],

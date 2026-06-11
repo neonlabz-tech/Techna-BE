@@ -6,15 +6,18 @@ import {
   IsString,
 } from 'class-validator';
 
-/**
- * Used by the Admin when creating a student directly (bypassing the public
- * registration form). All fields that are required in the schema must be
- * present here.
- */
 export class CreateStudentDto {
   @IsString()
-  @IsNotEmpty()
-  name: string;
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  fullNameTamil?: string;
+
+  @IsString()
+  @IsOptional()
+  fullNameEnglish?: string;
 
   @IsEmail()
   @IsNotEmpty()
@@ -25,6 +28,14 @@ export class CreateStudentDto {
   phone: string;
 
   @IsString()
+  @IsOptional()
+  whatsappNo?: string;
+
+  @IsString()
+  @IsOptional()
+  parentsNo?: string;
+
+  @IsString()
   @IsNotEmpty()
   batch: string;
 
@@ -33,13 +44,46 @@ export class CreateStudentDto {
   @IsOptional()
   modules?: string[];
 
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  subjects?: string[];
+
   @IsString()
   @IsOptional()
   address?: string;
 
   @IsString()
   @IsOptional()
+  permanentAddress?: string;
+
+  @IsString()
+  @IsOptional()
+  contactAddress?: string;
+
+  @IsString()
+  @IsOptional()
+  administrativeDistrict?: string;
+
+  @IsString()
+  @IsOptional()
+  postalCode?: string;
+
+  @IsString()
+  @IsOptional()
   dob?: string;
+
+  @IsString()
+  @IsOptional()
+  dateOfBirth?: string;
+
+  @IsString()
+  @IsOptional()
+  nicNo?: string;
+
+  @IsString()
+  @IsOptional()
+  school?: string;
 
   @IsString()
   @IsOptional()
@@ -52,4 +96,80 @@ export class CreateStudentDto {
   @IsString()
   @IsOptional()
   parentPhone?: string;
+
+  @IsString()
+  @IsOptional()
+  fatherName?: string;
+
+  @IsString()
+  @IsOptional()
+  motherName?: string;
+
+  @IsString()
+  @IsOptional()
+  guardianName?: string;
+
+  @IsString()
+  @IsOptional()
+  guardianMobile?: string;
+
+  @IsString()
+  @IsOptional()
+  fixedTelephone?: string;
+
+  @IsString()
+  @IsOptional()
+  residingSince?: string;
+
+  @IsString()
+  @IsOptional()
+  race?: string;
+
+  @IsString()
+  @IsOptional()
+  religion?: string;
+
+  @IsString()
+  @IsOptional()
+  citizenByDescent?: string;
+
+  @IsString()
+  @IsOptional()
+  guardianAddress?: string;
+
+  @IsString()
+  @IsOptional()
+  guardianFixedTel?: string;
+
+  @IsString()
+  @IsOptional()
+  contactPerson?: string;
+
+  @IsString()
+  @IsOptional()
+  olCategory?: string;
+
+  @IsString()
+  @IsOptional()
+  olYear?: string;
+
+  @IsString()
+  @IsOptional()
+  olIndexNumber?: string;
+
+  @IsString()
+  @IsOptional()
+  olNameUsed?: string;
+
+  @IsString()
+  @IsOptional()
+  olAccept?: string;
+
+  @IsArray()
+  @IsOptional()
+  olResults?: any[];
+
+  @IsString()
+  @IsOptional()
+  password?: string;
 }
