@@ -1,12 +1,9 @@
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
-  IsIn,
   IsNotEmpty,
-  IsNumber,
   IsOptional,
   IsString,
-  Min,
 } from 'class-validator';
 
 export class CreateExamNoticeDto {
@@ -45,15 +42,6 @@ export class CreateExamNoticeDto {
   @IsOptional()
   @IsString({ message: 'Description must be a string' })
   description?: string;
-
-  @Type(() => Number)
-  @IsNumber({}, { message: 'Total marks must be a number' })
-  @Min(0, { message: 'Total marks must be greater than or equal to 0' })
-  totalMarks: number;
-
-  @IsString({ message: 'Status must be a string' })
-  @IsIn(['upcoming', 'ongoing', 'completed'], { message: 'Status must be either upcoming, ongoing, or completed' })
-  status: 'upcoming' | 'ongoing' | 'completed';
 
   @IsOptional()
   @Type(() => Boolean)

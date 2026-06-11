@@ -29,14 +29,35 @@ export class DashboardService {
         present,
         absent,
         pendingPayments,
+        paidPayments,
       ] = await Promise.all([
         this.studentModel.countDocuments().exec(),
         this.teacherModel.countDocuments().exec(),
         this.moduleModel.countDocuments().exec(),
         this.attendanceModel.countDocuments({ date: today, status: 'present' }).exec(),
         this.attendanceModel.countDocuments({ date: today, status: 'absent' }).exec(),
+
         this.paymentModel.aggregate([
-          { $match: { status: { $in: ['pending', 'overdue'] } } },
+          {
+            $match: {
+              status: { $in: ['pending', 'overdue'] },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              count: { $sum: 1 },
+              amount: { $sum: '$amount' },
+            },
+          },
+        ]).exec(),
+
+        this.paymentModel.aggregate([
+          {
+            $match: {
+              status: { $regex: /^paid$/i },
+            },
+          },
           {
             $group: {
               _id: null,
@@ -48,11 +69,19 @@ export class DashboardService {
       ]);
 
       const pending = pendingPayments[0] ?? { count: 0, amount: 0 };
+      const paid = paidPayments[0] ?? { count: 0, amount: 0 };
 
       return {
         totalStudents,
         totalTeachers,
         totalModules,
+        totalRevenue: paid.amount,
+        paidRevenue: paid.amount,
+        totalPaid: paid.amount,
+        paidPayments: {
+          count: paid.count,
+          amount: paid.amount,
+        },
         todayAttendance: {
           date: today,
           present,
@@ -68,23 +97,28 @@ export class DashboardService {
       throw new InternalServerErrorException('Failed to load dashboard summary');
     }
   }
- async getRevenue() {
-  try {
-    const result = await this.paymentModel.aggregate([
-      { $match: { status: 'paid' } },
-      {
-        $group: {
-          _id: null,
-          totalRevenue: { $sum: '$amount' },
-        },
-      },
-    ]).exec();
 
-    return {
-      totalRevenue: result[0]?.totalRevenue || 0,
-    };
-  } catch {
-    throw new InternalServerErrorException('Failed to load revenue');
+  async getRevenue() {
+    try {
+      const result = await this.paymentModel.aggregate([
+        {
+          $match: {
+            status: { $regex: /^paid$/i },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: '$amount' },
+          },
+        },
+      ]).exec();
+
+      return {
+        totalRevenue: result[0]?.totalRevenue || 0,
+      };
+    } catch {
+      throw new InternalServerErrorException('Failed to load revenue');
+    }
   }
-}
 }
