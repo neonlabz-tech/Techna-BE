@@ -310,13 +310,27 @@ export class StudentsService {
     return student;
   }
 
-  async remove(id: string) {
-    const student = await this.studentModel.findByIdAndDelete(id).lean();
+ async remove(id: string) {
+  const student = await this.studentModel.findById(id).lean();
 
-    if (!student) throw new NotFoundException('Student not found');
-
-    return { message: 'Student deleted successfully' };
+  if (!student) {
+    throw new NotFoundException('Student not found');
   }
+
+  if (student.qrImageKey) {
+    try {
+      await this.storageService.deleteObject(student.qrImageKey);
+    } catch (error) {
+      console.error('Failed to delete QR image from R2:', error);
+    }
+  }
+
+  await this.studentModel.findByIdAndDelete(id);
+
+  return {
+    message: 'Student and QR deleted successfully',
+  };
+}
 
   async approveStudent(id: string): Promise<Student> {
     const student = await this.findStudentByIdOrStudentId(id);

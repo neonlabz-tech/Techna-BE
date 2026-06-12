@@ -31,15 +31,15 @@ export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
 
   @Post('scan-qr')
-  @Roles(Role.ADMIN, Role.TEACHER)
+ // @Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.CREATED)
   scanQr(@Body() scanAttendanceDto: ScanAttendanceDto) {
     return this.attendanceService.scanQr(scanAttendanceDto);
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.TEACHER)
+  //@UseGuards(JwtAuthGuard, RolesGuard)
+  //@Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.CREATED)
   create(
     @Body() createAttendanceDto: CreateAttendanceDto,
@@ -48,24 +48,24 @@ export class AttendanceController {
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.TEACHER)
+  //@UseGuards(JwtAuthGuard, RolesGuard)
+  //@Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.OK)
   findAll(): Promise<AttendanceDocument[]> {
     return this.attendanceService.findAll();
   }
 
   @Get('report')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.TEACHER)
+  //@UseGuards(JwtAuthGuard, RolesGuard)
+  //@Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.OK)
   getReport(@Query() query: AttendanceReportQueryDto) {
     return this.attendanceService.getReport(query);
   }
 
   @Get('student/:studentId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.TEACHER, Role.STUDENT)
+  //@UseGuards(JwtAuthGuard, RolesGuard)
+  //@Roles(Role.ADMIN, Role.TEACHER, Role.STUDENT)
   @HttpCode(HttpStatus.OK)
   findByStudent(@Param('studentId') studentId: string, @Request() req: any) {
     if (req.user.role === Role.STUDENT && req.user.userId !== studentId) {
@@ -78,16 +78,16 @@ export class AttendanceController {
   }
 
   @Get(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.TEACHER)
+  //@UseGuards(JwtAuthGuard, RolesGuard)
+  //@Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.OK)
   findOne(@Param('id') id: string): Promise<AttendanceDocument> {
     return this.attendanceService.findOne(id);
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.TEACHER)
+  //@UseGuards(JwtAuthGuard, RolesGuard)
+  //@Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.OK)
   update(
     @Param('id') id: string,
@@ -97,8 +97,8 @@ export class AttendanceController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  //@UseGuards(JwtAuthGuard, RolesGuard)
+  //@Roles(Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string): Promise<void> {
     await this.attendanceService.remove(id);
