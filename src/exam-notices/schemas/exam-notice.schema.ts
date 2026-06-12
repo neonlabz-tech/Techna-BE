@@ -32,16 +32,6 @@ export class ExamNotice {
   @Prop({ trim: true })
   description?: string;
 
-  @Prop({ required: true, min: 0 })
-  totalMarks: number;
-
-  @Prop({
-    required: true,
-    enum: ['upcoming', 'ongoing', 'completed'],
-    default: 'upcoming',
-  })
-  status: 'upcoming' | 'ongoing' | 'completed';
-
   @Prop({ default: false })
   isPublished: boolean;
 

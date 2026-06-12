@@ -1,12 +1,9 @@
 /// <reference types="multer" />
+
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { Model } from 'mongoose';
-import {
-  DeleteObjectCommand,
-  PutObjectCommand,
-  S3Client,
-} from '@aws-sdk/client-s3';
 
 import { Module, SchoolModuleDocument } from './schemas/module.schema';
 import { CreateModuleDto } from './dto/create-module.dto';
