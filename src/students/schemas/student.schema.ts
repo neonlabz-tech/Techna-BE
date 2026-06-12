@@ -28,19 +28,19 @@ export class OlResultRow {
   @Prop({ required: true })
   indexNumber!: string;
 
-  @Prop({ default: null })
+  @Prop({ enum: Object.values(OlGrade), default: null })
   english?: string;
 
-  @Prop({ default: null })
+  @Prop({ enum: Object.values(OlGrade), default: null })
   mathematics?: string;
 
-  @Prop({ default: null })
+  @Prop({ enum: Object.values(OlGrade), default: null })
   science?: string;
 
-  @Prop({ default: null })
+  @Prop({ enum: Object.values(OlGrade), default: null })
   sinhala?: string;
 
-  @Prop({ default: null })
+  @Prop({ enum: Object.values(OlGrade), default: null })
   tamil?: string;
 }
 
@@ -196,7 +196,7 @@ export class Student {
   @Prop()
   permanentAddress?: string;
 
-  @Prop()
+  @Prop({ enum: Object.values(District) })
   administrativeDistrict?: string;
 
   @Prop()
@@ -205,10 +205,10 @@ export class Student {
   @Prop()
   residingSince?: string;
 
-  @Prop()
+  @Prop({ enum: ['Sinhala', 'Tamil', 'Muslim', 'Burgher', 'Malay', 'Other'] })
   race?: string;
 
-  @Prop()
+  @Prop({ enum: ['Buddhism', 'Hinduism', 'Islam', 'Christianity(RC/Non.RC)', 'Other'] })
   religion?: string;
 
   @Prop({ enum: ['YES', 'NO'], default: 'YES' })
@@ -271,17 +271,11 @@ export class Student {
   // NEW: Section E — A/L subject selection
   // ══════════════════════════════════════════════════════════════════════════
 
-  @Prop({ type: [String], default: [] })
-subjects?: string[];
+  @Prop({ type: [String], enum: Object.values(AlSubject) })
+  subjects?: string[];
 
   @Prop()
   agreed?: boolean;
-
-  @Prop()
-qrCodeUrl?: string;
-
-@Prop()
-qrImageKey?: string;
 }
 
 export const StudentSchema = SchemaFactory.createForClass(Student);

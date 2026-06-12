@@ -11,6 +11,7 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../decorators/roles.decorator';
@@ -59,8 +60,9 @@ export class StudentsController {
   // GET /students?status=approved
   // GET /students?status=rejected
   @Get()
-//  @UseGuards(JwtAuthGuard, RolesGuard)
-  //@Roles(Role.ADMIN)
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   findAll(@Query('status') status?: 'pending' | 'approved' | 'rejected') {
     return this.studentsService.findAll(status);
   }
@@ -69,8 +71,9 @@ export class StudentsController {
   //
   // GET /students/:id
   @Get(':id')
- // @UseGuards(JwtAuthGuard, RolesGuard)
- // @Roles(Role.ADMIN, Role.STUDENT)
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.STUDENT)
   async findOne(
     @Param('id') id: string,
     @Request() req: AuthenticatedRequest,
@@ -89,8 +92,9 @@ export class StudentsController {
   //
   // GET /students/:id/enrolment-history
   @Get(':id/enrolment-history')
-  //@UseGuards(JwtAuthGuard, RolesGuard)
-  //@Roles(Role.ADMIN, Role.STUDENT)
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.STUDENT)
   getEnrolmentHistory(
     @Param('id') id: string,
     @Request() req: AuthenticatedRequest,
@@ -106,8 +110,31 @@ export class StudentsController {
   //
   // POST /students
   @Post()
- // @UseGuards(JwtAuthGuard, RolesGuard)
- // @Roles(Role.ADMIN)
+  @ApiBearerAuth('access-token')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['name', 'email', 'phone', 'batch'],
+      properties: {
+        name: { type: 'string', example: 'Kasun Perera' },
+        email: { type: 'string', example: 'kasun.perera@example.com' },
+        phone: { type: 'string', example: '0771234567' },
+        batch: { type: 'string', example: '2026 Batch' },
+        modules: {
+          type: 'array',
+          items: { type: 'string' },
+          example: ['Advanced ICT'],
+        },
+        address: { type: 'string', example: 'No. 20, Lake Road, Kandy' },
+        dob: { type: 'string', example: '2008-05-20' },
+        avatar: { type: 'string', example: 'https://example.com/avatar.jpg' },
+        parentName: { type: 'string', example: 'Nimal Perera' },
+        parentPhone: { type: 'string', example: '0712345678' },
+      },
+    },
+  })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   create(@Body() body: CreateStudentPayload) {
     return this.studentsService.create(body);
   }
@@ -116,8 +143,30 @@ export class StudentsController {
   //
   // PATCH /students/:id
   @Patch(':id')
- // @UseGuards(JwtAuthGuard, RolesGuard)
- // @Roles(Role.ADMIN)
+  @ApiBearerAuth('access-token')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', example: 'Kasun Perera' },
+        email: { type: 'string', example: 'kasun.perera@example.com' },
+        phone: { type: 'string', example: '0771234567' },
+        batch: { type: 'string', example: '2026 A/L' },
+        modules: {
+          type: 'array',
+          items: { type: 'string' },
+          example: ['Advanced ICT'],
+        },
+        address: { type: 'string', example: 'No. 20, Lake Road, Kandy' },
+        dob: { type: 'string', example: '2008-05-20' },
+        avatar: { type: 'string', example: 'https://example.com/avatar.jpg' },
+        parentName: { type: 'string', example: 'Nimal Perera' },
+        parentPhone: { type: 'string', example: '0712345678' },
+      },
+    },
+  })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   update(@Param('id') id: string, @Body() body: UpdateStudentPayload) {
     return this.studentsService.update(id, body);
   }
@@ -126,8 +175,9 @@ export class StudentsController {
   //
   // DELETE /students/:id
   @Delete(':id')
-  //@UseGuards(JwtAuthGuard, RolesGuard)
-  //@Roles(Role.ADMIN)
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   remove(@Param('id') id: string) {
     return this.studentsService.remove(id);
   }
@@ -137,8 +187,9 @@ export class StudentsController {
   //
   // PATCH /students/:id/approve
   @Patch(':id/approve')
- // @UseGuards(JwtAuthGuard, RolesGuard)
-  //@Roles(Role.ADMIN)
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   approveStudent(@Param('id') id: string) {
     return this.studentsService.approveStudent(id);
   }
@@ -149,8 +200,9 @@ export class StudentsController {
   // PATCH /students/:id/reject
   // Body: { reason: string }
   @Patch(':id/reject')
-  //@UseGuards(JwtAuthGuard, RolesGuard)
-  //@Roles(Role.ADMIN)
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   rejectStudent(
     @Param('id') id: string,
     @Body() rejectStudentDto: RejectStudentDto,
@@ -162,8 +214,9 @@ export class StudentsController {
   //
   // POST /students/:studentId/qr-code
   @Post(':studentId/qr-code')
-  //@UseGuards(JwtAuthGuard, RolesGuard)
-  //@Roles(Role.ADMIN)
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   generateStudentQrCode(@Param('studentId') studentId: string) {
     return this.studentsService.generateStudentQrCode(studentId);
   }
