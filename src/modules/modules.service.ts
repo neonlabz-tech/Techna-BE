@@ -1,9 +1,16 @@
 /// <reference types="multer" />
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { Model } from 'mongoose';
+<<<<<<< Updated upstream
+=======
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+>>>>>>> Stashed changes
 
 import { Module, SchoolModuleDocument } from './schemas/module.schema';
 import { CreateModuleDto } from './dto/create-module.dto';
@@ -122,11 +129,24 @@ export class ModulesService {
     }
   }
 
+<<<<<<< Updated upstream
   async uploadResource(
     id: string,
     file: Express.Multer.File,
     title: string,
   ) {
+=======
+  private readonly s3 = new S3Client({
+    region: 'auto',
+    endpoint: process.env.CLOUDFLARE_R2_ENDPOINT,
+    credentials: {
+      accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID!,
+      secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY!,
+    },
+  });
+
+  async uploadResource(id: string, file: Express.Multer.File, title: string) {
+>>>>>>> Stashed changes
     let folder = 'others';
     let fileType = 'file';
 

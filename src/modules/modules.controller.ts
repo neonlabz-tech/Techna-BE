@@ -1,3 +1,4 @@
+/// <reference types="multer" />
 import {
   Controller,
   Get,
@@ -11,6 +12,10 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
 import { ModulesService } from './modules.service';
 import { CreateModuleDto } from './dto/create-module.dto';
 import { UpdateModuleDto } from './dto/update-module.dto';
