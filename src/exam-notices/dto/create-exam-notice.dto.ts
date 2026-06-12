@@ -1,12 +1,12 @@
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
-  IsIn,
   IsNotEmpty,
-  IsNumber,
   IsOptional,
   IsString,
+  IsNumber,
   Min,
+  IsIn,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -62,9 +62,14 @@ export class CreateExamNoticeDto {
   @Min(0, { message: 'Total marks must be greater than or equal to 0' })
   totalMarks: number;
 
-  @ApiProperty({ enum: ['upcoming', 'ongoing', 'completed'], example: 'upcoming' })
+  @ApiProperty({
+    enum: ['upcoming', 'ongoing', 'completed'],
+    example: 'upcoming',
+  })
   @IsString({ message: 'Status must be a string' })
-  @IsIn(['upcoming', 'ongoing', 'completed'], { message: 'Status must be either upcoming, ongoing, or completed' })
+  @IsIn(['upcoming', 'ongoing', 'completed'], {
+    message: 'Status must be either upcoming, ongoing, or completed',
+  })
   status: 'upcoming' | 'ongoing' | 'completed';
 
   @ApiPropertyOptional({ example: false })

@@ -119,7 +119,7 @@ export class StudentsController {
         name: { type: 'string', example: 'Kasun Perera' },
         email: { type: 'string', example: 'kasun.perera@example.com' },
         phone: { type: 'string', example: '0771234567' },
-        batch: { type: 'string', example: '2026 A/L' },
+        batch: { type: 'string', example: '2026 Batch' },
         modules: {
           type: 'array',
           items: { type: 'string' },
