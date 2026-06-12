@@ -32,10 +32,7 @@ export class TeacherController {
   }
 
   @Put(':id')
-  update(
-    @Param('id') id: string,
-    @Body() updateTeacherDto: UpdateTeacherDto,
-  ) {
+  update(@Param('id') id: string, @Body() updateTeacherDto: UpdateTeacherDto) {
     return this.teacherService.update(id, updateTeacherDto);
   }
 

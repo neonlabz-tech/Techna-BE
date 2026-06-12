@@ -2,45 +2,101 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
   Param,
   Patch,
   Post,
+  Query,
+  Request,
+  UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
+
 import { AttendanceService } from './attendance.service';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
+import { ScanAttendanceDto } from './dto/scan-attendance.dto';
+import { AttendanceReportQueryDto } from './dto/report-query.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 import { AttendanceDocument } from './schemas/attendance.schema';
+
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../decorators/roles.decorator';
+import { Role } from '../enums/role.enum';
 
 @Controller('attendance')
 export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
 
-  @Post()
+  @Post('scan-qr')
+  @Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.CREATED)
-  async create(
+  scanQr(@Body() scanAttendanceDto: ScanAttendanceDto) {
+    return this.attendanceService.scanQr(scanAttendanceDto);
+  }
+
+  @Post()
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.TEACHER)
+  @HttpCode(HttpStatus.CREATED)
+  create(
     @Body() createAttendanceDto: CreateAttendanceDto,
   ): Promise<AttendanceDocument> {
     return this.attendanceService.create(createAttendanceDto);
   }
 
   @Get()
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.OK)
-  async findAll(): Promise<AttendanceDocument[]> {
+  findAll(): Promise<AttendanceDocument[]> {
     return this.attendanceService.findAll();
   }
 
-  @Get(':id')
+  @Get('report')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.OK)
-  async findOne(@Param('id') id: string): Promise<AttendanceDocument> {
+  getReport(@Query() query: AttendanceReportQueryDto) {
+    return this.attendanceService.getReport(query);
+  }
+
+  @Get('student/:studentId')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.TEACHER, Role.STUDENT)
+  @HttpCode(HttpStatus.OK)
+  findByStudent(@Param('studentId') studentId: string, @Request() req: any) {
+    if (req.user.role === Role.STUDENT && req.user.userId !== studentId) {
+      throw new ForbiddenException(
+        'You can only view your own attendance',
+      );
+    }
+
+    return this.attendanceService.findByStudent(studentId);
+  }
+
+  @Get(':id')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.TEACHER)
+  @HttpCode(HttpStatus.OK)
+  findOne(@Param('id') id: string): Promise<AttendanceDocument> {
     return this.attendanceService.findOne(id);
   }
 
   @Patch(':id')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.OK)
-  async update(
+  update(
     @Param('id') id: string,
     @Body() updateAttendanceDto: UpdateAttendanceDto,
   ): Promise<AttendanceDocument> {
@@ -48,6 +104,9 @@ export class AttendanceController {
   }
 
   @Delete(':id')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string): Promise<void> {
     await this.attendanceService.remove(id);

@@ -26,7 +26,11 @@ export class Payment {
   @Prop({ required: true, enum: ['cash', 'bank', 'online'] })
   method: 'cash' | 'bank' | 'online';
 
-  @Prop({ required: true, enum: ['paid', 'pending', 'overdue'], default: 'paid' })
+  @Prop({
+    required: true,
+    enum: ['paid', 'pending', 'overdue'],
+    default: 'paid',
+  })
   status: 'paid' | 'pending' | 'overdue';
 
   @Prop({ required: true, unique: true })
