@@ -42,6 +42,8 @@ export class OlResultRow {
 
   @Prop({ enum: Object.values(OlGrade), default: null })
   tamil?: string;
+
+  
 }
 
 export const OlResultRowSchema = SchemaFactory.createForClass(OlResultRow);
@@ -100,6 +102,12 @@ export class Student {
 
   @Prop()
   qrCode?: string;
+
+    @Prop()
+qrImageKey?: string;
+
+@Prop()
+qrCodeUrl?: string;
 
   // ── EXISTING: Core account fields ──────────────────────────────────────────
 

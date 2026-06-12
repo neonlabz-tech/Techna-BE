@@ -223,8 +223,7 @@ export class StudentsService {
         data.email,
       address: data.permanentAddress?.trim() || data.address?.trim(),
       permanentAddress: data.permanentAddress?.trim() || data.address?.trim(),
-      dob: data.dob || data.dateOfBirth,
-      dateOfBirth: data.dateOfBirth || data.dob,
+      dateOfBirth: data.dateOfBirth,
       parentName:
         data.motherName?.trim() ||
         data.fatherName?.trim() ||
