@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { UpdatePaymentDto } from './dto/update-payment.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Payment } from './schemas/payment.schema';
@@ -54,8 +55,15 @@ export class PaymentsService {
       status: data.status || 'paid',
       receiptNo,
       batch: data.batch,
+      notes: data.notes,
     });
 
+    return this.toPaymentRecord(payment);
+  }
+
+  async update(id: string, dto: UpdatePaymentDto) {
+    const payment = await this.paymentModel.findByIdAndUpdate(id, dto, { new: true }).lean();
+    if (!payment) throw new NotFoundException('Payment not found');
     return this.toPaymentRecord(payment);
   }
 
@@ -258,6 +266,7 @@ export class PaymentsService {
       status: payment.status,
       receiptNo: payment.receiptNo,
       batch: payment.batch,
+      notes: payment.notes,
       createdAt: payment.createdAt,
       updatedAt: payment.updatedAt,
     };

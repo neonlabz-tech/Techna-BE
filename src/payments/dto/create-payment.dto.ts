@@ -38,4 +38,8 @@ export class CreatePaymentDto {
 
   @IsString()
   batch: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }
