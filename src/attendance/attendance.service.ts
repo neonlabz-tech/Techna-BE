@@ -223,13 +223,14 @@ export class AttendanceService {
 
       const students = await this.studentModel
         .find(studentFilter)
-<<<<<<< Updated upstream
-        .select('studentId name batch modules status')
-        .lean<{ studentId: string; name?: string; batch: string; modules: string[]; status: string }[]>()
-=======
         .select('studentId fullNameEnglish batch modules status')
-        .lean()
->>>>>>> Stashed changes
+        .lean<{
+          studentId: string;
+          fullNameEnglish?: string;
+          batch: string;
+          modules: string[];
+          status: string;
+        }[]>()
         .exec();
 
       if (query.studentId && students.length === 0) {
