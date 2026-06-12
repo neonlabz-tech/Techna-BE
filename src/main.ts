@@ -3,6 +3,8 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter, AllExceptionsFilter } from './common/filters';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+
 
 // DNS config (helps with MongoDB / network resolution issues)
 dns.setServers(['8.8.8.8', '8.8.4.4']);
@@ -34,11 +36,39 @@ async function bootstrap() {
   // Global prefix
   app.setGlobalPrefix('api');
 
+  // =========================
+  // 🔥 SWAGGER SETUP
+  // =========================
+
+  const config = new DocumentBuilder()
+    .setTitle('Techna POS API')
+    .setDescription('Swagger API documentation for Techna POS backend')
+    .setVersion('1.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+      },
+      'access-token',
+    )
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+
+  SwaggerModule.setup('api/docs', app, document, {
+    useGlobalPrefix: false,
+    swaggerOptions: {
+      persistAuthorization: true,
+    },
+  });
+
   const port = Number(process.env.PORT) || 4000;
 
   await app.listen(port);
 
   console.log(`🚀 Techna API running on http://localhost:${port}/api`);
+  console.log(`📘 Swagger running on http://localhost:${port}/api/docs`);
 }
 
 bootstrap();
