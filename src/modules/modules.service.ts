@@ -8,6 +8,7 @@ import { Model } from 'mongoose';
 import { Module, SchoolModuleDocument } from './schemas/module.schema';
 import { CreateModuleDto } from './dto/create-module.dto';
 import { UpdateModuleDto } from './dto/update-module.dto';
+import { AddResourceUrlDto } from './dto/add-resource-url.dto';
 import {
   InternalServerErrorException,
   NotFoundException,
@@ -199,6 +200,47 @@ async uploadResource(
 
     return {
       message: 'Resource deleted successfully',
+    };
+  }
+
+  async addResourceUrl(moduleId: string, dto: AddResourceUrlDto) {
+    const module = await this.moduleModel.findById(moduleId);
+
+    if (!module) {
+      throw new NotFoundException('Module not found');
+    }
+
+    return this.moduleModel.findByIdAndUpdate(
+      moduleId,
+      {
+        $push: {
+          resources: {
+            title: dto.title,
+            url: dto.url,
+            thumbnailUrl: dto.thumbnailUrl,
+            fileType: dto.fileType ?? 'video',
+            description: dto.description,
+            uploadedAt: new Date(),
+          },
+        },
+      },
+      { new: true },
+    );
+  }
+
+  async toggleResourcePublish(moduleId: string, resourceId: string): Promise<any> {
+    const module = await this.moduleModel.findById(moduleId);
+    if (!module) throw new NotFoundException('Module not found');
+
+    const resource = (module.resources as any).id(resourceId);
+    if (!resource) throw new NotFoundException('Resource not found');
+
+    resource.isPublished = !resource.isPublished;
+    await module.save();
+    return {
+      resourceId,
+      isPublished: resource.isPublished,
+      message: resource.isPublished ? 'Video published' : 'Video unpublished',
     };
   }
 
