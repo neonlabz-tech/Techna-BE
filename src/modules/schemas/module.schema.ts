@@ -32,9 +32,14 @@ export class Module {
   @Prop([
     {
       title: String,
-      fileType: String, // video | image | pdf
+      fileType: String,
       fileUrl: String,
       fileKey: String,
+      url: String,
+      thumbnailUrl: String,
+      description: String,
+      uploadedAt: Date,
+      isPublished: { type: Boolean, default: false },
     },
   ])
   resources?: {
@@ -42,6 +47,11 @@ export class Module {
     fileType: string;
     fileUrl: string;
     fileKey: string;
+    url?: string;
+    thumbnailUrl?: string;
+    description?: string;
+    uploadedAt?: Date;
+    isPublished?: boolean;
   }[];
 }
 
