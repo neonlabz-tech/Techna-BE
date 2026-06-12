@@ -12,8 +12,8 @@ import { Model, Types } from 'mongoose';
 import { randomUUID } from 'node:crypto';
 import * as QRCode from 'qrcode';
 
-import { StorageService } from '../storage/storage.service';
 import { EmailService } from '../email/email.service';
+import { StorageService } from '../storage/storage.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { EnrolmentHistoryDto } from './dto/enrolment-history.dto';
 import { RegisterStudentDto } from './dto/register-student.dto';
@@ -158,8 +158,7 @@ export class StudentsService {
         dto.parent?.guardianName?.trim().toUpperCase(),
 
       parentPhone:
-        dto.personal.parentsNo?.trim() ||
-        dto.parent?.guardianMobile?.trim(),
+        dto.personal.parentsNo?.trim() || dto.parent?.guardianMobile?.trim(),
 
       olCategory: dto.olRecords?.olCategory ?? 'Local O/L',
       olYear: dto.olRecords?.olYear?.trim(),
@@ -204,19 +203,11 @@ export class StudentsService {
   async create(data: CreateStudentPayload) {
     this.validateRegistration(data);
 
-    const selectedSubjects =
-      data.subjects?.length ? data.subjects : data.modules?.length ? data.modules : [];
-
-    console.log('[StudentsService.create] payload check', {
-      nicNo: data.nicNo,
-      school: data.school,
-      fatherName: data.fatherName,
-      motherName: data.motherName,
-      guardianMobile: data.guardianMobile,
-      race: data.race,
-      religion: data.religion,
-      data,
-    });
+    const selectedSubjects = data.subjects?.length
+      ? data.subjects
+      : data.modules?.length
+        ? data.modules
+        : [];
 
     const payload: CreateStudentPayload = {
       ...data,
@@ -251,11 +242,7 @@ export class StudentsService {
       enrolledAt: data.enrolledAt ?? new Date().toISOString(),
     };
 
-    if (!payload.password) {
-      payload.password = await bcrypt.hash('Student@123', 10);
-    } else {
-      payload.password = await bcrypt.hash(payload.password, 10);
-    }
+    payload.password = await bcrypt.hash(payload.password || 'Student@123', 10);
 
     try {
       const student = await this.studentModel.create(payload);
@@ -283,12 +270,11 @@ export class StudentsService {
       data.password = await bcrypt.hash(data.password, 10);
     }
 
-    const selectedSubjects =
-      data.subjects?.length
-        ? data.subjects
-        : data.modules?.length
-          ? data.modules
-          : undefined;
+    const selectedSubjects = data.subjects?.length
+      ? data.subjects
+      : data.modules?.length
+        ? data.modules
+        : undefined;
 
     const payload = {
       ...data,
@@ -301,7 +287,10 @@ export class StudentsService {
     };
 
     const student = await this.studentModel
-      .findByIdAndUpdate(id, payload, { new: true, runValidators: true })
+      .findByIdAndUpdate(id, payload, {
+        returnDocument: 'after',
+        runValidators: true,
+      })
       .select('-password')
       .lean();
 
@@ -310,27 +299,27 @@ export class StudentsService {
     return student;
   }
 
- async remove(id: string) {
-  const student = await this.studentModel.findById(id).lean();
+  async remove(id: string) {
+    const student = await this.studentModel.findById(id).lean();
 
-  if (!student) {
-    throw new NotFoundException('Student not found');
-  }
-
-  if (student.qrImageKey) {
-    try {
-      await this.storageService.deleteObject(student.qrImageKey);
-    } catch (error) {
-      console.error('Failed to delete QR image from R2:', error);
+    if (!student) {
+      throw new NotFoundException('Student not found');
     }
+
+    if (student.qrImageKey) {
+      try {
+        await this.storageService.deleteObject(student.qrImageKey);
+      } catch (error) {
+        console.error('Failed to delete QR image from R2:', error);
+      }
+    }
+
+    await this.studentModel.findByIdAndDelete(id);
+
+    return {
+      message: 'Student and QR deleted successfully',
+    };
   }
-
-  await this.studentModel.findByIdAndDelete(id);
-
-  return {
-    message: 'Student and QR deleted successfully',
-  };
-}
 
   async approveStudent(id: string): Promise<Student> {
     const student = await this.findStudentByIdOrStudentId(id);
@@ -397,9 +386,7 @@ export class StudentsService {
       name: student.fullNameEnglish ?? '',
       email: student.email,
       phone: student.phone ?? student.whatsappNo ?? '',
-      modules: student.subjects?.length
-        ? student.subjects
-        : student.modules ?? [],
+      modules: student.subjects?.length ? student.subjects : student.modules ?? [],
       batch: student.batch ?? '',
       status: student.status,
       enrolledAt: student.enrolledAt,
@@ -462,7 +449,7 @@ export class StudentsService {
             qrImageKey: uploadedQr.key,
           },
         },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .select('-password');
 
@@ -505,7 +492,10 @@ export class StudentsService {
     const counter = await this.counterModel.findOneAndUpdate(
       { name: 'studentId' },
       { $inc: { seq: 1 } },
-      { new: true, upsert: true },
+      {
+        returnDocument: 'after',
+        upsert: true,
+      },
     );
 
     const padded = String(counter.seq).padStart(3, '0');
@@ -520,7 +510,10 @@ export class StudentsService {
     const counter = await this.counterModel.findOneAndUpdate(
       { name: `${name}_${year}` },
       { $inc: { seq: 1 } },
-      { new: true, upsert: true },
+      {
+        returnDocument: 'after',
+        upsert: true,
+      },
     );
 
     if (!counter) {
