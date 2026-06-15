@@ -109,6 +109,8 @@ qrImageKey?: string;
 @Prop()
 qrCodeUrl?: string;
 
+
+
   // ── EXISTING: Core account fields ──────────────────────────────────────────
 
   @Prop({ required: true, lowercase: true, trim: true })
@@ -213,8 +215,18 @@ qrCodeUrl?: string;
   @Prop()
   residingSince?: string;
 
-  @Prop({ enum: ['Sinhala', 'Tamil', 'Muslim', 'Burgher', 'Malay', 'Other'] })
-  race?: string;
+  @Prop({
+  enum: [
+    'Sri Lankan Tamil',
+    'Sri Lankan Moor',
+    'Indian Tamil',
+    'Sinhalese',
+    'Burgher',
+    'Malay',
+    'Other',
+  ],
+})
+race?: string;
 
   @Prop({ enum: ['Buddhism', 'Hinduism', 'Islam', 'Christianity(RC/Non.RC)', 'Other'] })
   religion?: string;

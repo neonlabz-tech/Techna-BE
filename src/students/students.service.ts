@@ -320,18 +320,24 @@ export class StudentsService {
     };
   }
 
-  async approveStudent(id: string): Promise<Student> {
-    const student = await this.findStudentByIdOrStudentId(id);
+ async approveStudent(id: string): Promise<Student> {
+  const student = await this.findStudentByIdOrStudentId(id);
 
-    if (student.status !== 'approved') {
-      student.status = 'approved';
-      student.approvedAt = new Date().toISOString();
-      student.rejectionReason = undefined;
-      await student.save();
-    }
+  student.status = 'approved';
+  student.approvedAt = new Date().toISOString();
+  student.rejectionReason = undefined;
+  await student.save();
 
-    return this.generateStudentQrCode(student.studentId);
+  try {
+    return await this.generateStudentQrCode(student.studentId);
+  } catch (error) {
+    console.error('QR generation/upload failed:', error);
+
+    throw new InternalServerErrorException(
+      'Student approved, but QR generation/upload failed. Check R2 env values.',
+    );
   }
+}
 
   async rejectStudent(id: string, dto: RejectStudentDto): Promise<object> {
     const student = await this.findStudentByIdOrStudentId(id);
