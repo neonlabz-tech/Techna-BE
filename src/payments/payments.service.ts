@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { UpdatePaymentDto } from './dto/update-payment.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Payment } from './schemas/payment.schema';
@@ -54,8 +55,15 @@ export class PaymentsService {
       status: data.status || 'paid',
       receiptNo,
       batch: data.batch,
+      notes: data.notes,
     });
 
+    return this.toPaymentRecord(payment);
+  }
+
+  async update(id: string, dto: UpdatePaymentDto) {
+    const payment = await this.paymentModel.findByIdAndUpdate(id, dto, { new: true }).lean();
+    if (!payment) throw new NotFoundException('Payment not found');
     return this.toPaymentRecord(payment);
   }
 
@@ -106,10 +114,12 @@ export class PaymentsService {
   }
 
   private async resolveStudent(studentId: string) {
+    const conditions: object[] = [{ studentId }];
+    if (Types.ObjectId.isValid(studentId)) {
+      conditions.unshift({ _id: studentId });
+    }
     const student = await this.studentModel
-      .findOne({
-        $or: [{ _id: studentId }, { studentId }],
-      })
+      .findOne({ $or: conditions })
       .lean();
 
     if (!student) {
@@ -163,9 +173,11 @@ export class PaymentsService {
 
   private async generateUniqueReceiptNo() {
     for (let attempt = 0; attempt < 5; attempt += 1) {
-      const receiptNo = `REC-${Date.now()}-${Math.floor(Math.random() * 10000)
-        .toString()
-        .padStart(4, '0')}`;
+      const now = new Date();
+      const datePart = now.toISOString().slice(0, 10).replace(/-/g, '');
+      const timePart = now.toTimeString().slice(0, 8).replace(/:/g, '');
+      const randPart = Math.floor(Math.random() * 900 + 100).toString();
+      const receiptNo = `RCP-${datePart}-${timePart}-${randPart}`;
       const existing = await this.paymentModel.findOne({ receiptNo }).lean();
 
       if (!existing) {
@@ -258,6 +270,7 @@ export class PaymentsService {
       status: payment.status,
       receiptNo: payment.receiptNo,
       batch: payment.batch,
+      notes: payment.notes,
       createdAt: payment.createdAt,
       updatedAt: payment.updatedAt,
     };
