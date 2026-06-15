@@ -50,6 +50,32 @@ export class EmailService {
     });
   }
 
+  async sendApprovalEmail(payload: StudentEmailPayload): Promise<void> {
+    await this.sendStudentEmail({
+      to: payload.email,
+      subject: 'Your Techna Account Has Been Approved!',
+      text: [
+        `Hello ${payload.name},`,
+        '',
+        'Congratulations! Your registration has been approved.',
+        `Student Name: ${payload.name}`,
+        `Student ID: ${payload.studentId}`,
+        '',
+        'You can now log in to the Techna student portal using your registered email and password.',
+        '',
+        'Welcome to Techna!',
+      ].join('\n'),
+      html: `
+        <p>Hello ${this.escapeHtml(payload.name)},</p>
+        <p><strong>Congratulations!</strong> Your registration has been approved.</p>
+        <p><strong>Student Name:</strong> ${this.escapeHtml(payload.name)}</p>
+        <p><strong>Student ID:</strong> ${this.escapeHtml(payload.studentId)}</p>
+        <p>You can now log in to the Techna student portal using your registered email and password.</p>
+        <p>Welcome to Techna!</p>
+      `,
+    });
+  }
+
   async sendRejectionEmail(
     payload: StudentRejectionEmailPayload,
   ): Promise<void> {

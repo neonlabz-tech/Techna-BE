@@ -38,6 +38,9 @@ export class Payment {
 
   @Prop({ required: true })
   batch: string;
+
+  @Prop()
+  notes?: string;
 }
 
 export const PaymentSchema = SchemaFactory.createForClass(Payment);

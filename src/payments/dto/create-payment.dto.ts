@@ -5,7 +5,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export class CreatePaymentDto {
   @ApiProperty({ example: '665f1b2c3d4e5f6789012345' })
   @IsString()
-  studentId: string;
+  studentId!: string;
 
   @ApiPropertyOptional({ example: 'Kasun Perera' })
   @IsOptional()
@@ -14,7 +14,7 @@ export class CreatePaymentDto {
 
   @ApiProperty({ example: '665f1b2c3d4e5f6789019999' })
   @IsString()
-  moduleId: string;
+  moduleId!: string;
 
   @ApiPropertyOptional({ example: 'Advanced ICT' })
   @IsOptional()
@@ -25,16 +25,16 @@ export class CreatePaymentDto {
   @Type(() => Number)
   @IsNumber()
   @Min(0)
-  amount: number;
+  amount!: number;
 
   @ApiProperty({ example: '2026-06-10', pattern: '^\\d{4}-\\d{2}-\\d{2}$' })
   @IsString()
   @Matches(/^\d{4}-\d{2}-\d{2}$/)
-  paidDate: string;
+  paidDate!: string;
 
   @ApiProperty({ enum: ['cash', 'bank', 'online'], example: 'cash' })
   @IsIn(['cash', 'bank', 'online'])
-  method: 'cash' | 'bank' | 'online';
+  method!: 'cash' | 'bank' | 'online';
 
   @ApiPropertyOptional({ enum: ['paid', 'pending', 'overdue'], example: 'paid' })
   @IsOptional()
@@ -48,5 +48,9 @@ export class CreatePaymentDto {
 
   @ApiProperty({ example: '2026 A/L' })
   @IsString()
-  batch: string;
+  batch!: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }

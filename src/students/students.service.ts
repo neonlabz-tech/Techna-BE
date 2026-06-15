@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -33,6 +34,8 @@ export type UpdateStudentPayload = Partial<CreateStudentPayload>;
 
 @Injectable()
 export class StudentsService {
+  private readonly logger = new Logger(StudentsService.name);
+
   constructor(
     @InjectModel(Student.name)
     private readonly studentModel: Model<StudentDocument>,
@@ -309,7 +312,10 @@ export class StudentsService {
       try {
         await this.storageService.deleteObject(student.qrImageKey);
       } catch (error) {
-        console.error('Failed to delete QR image from R2:', error);
+        this.logger.error(
+          'Failed to delete QR image from R2',
+          error instanceof Error ? error.message : String(error),
+        );
       }
     }
 
@@ -320,27 +326,39 @@ export class StudentsService {
     };
   }
 
- async approveStudent(id: string): Promise<Student> {
-  const student = await this.findStudentByIdOrStudentId(id);
+  async approveStudent(id: string): Promise<Student> {
+    const student = await this.findStudentByIdOrStudentId(id);
+    const shouldSendEmail = student.status !== 'approved';
 
-  student.status = 'approved';
-  student.approvedAt = new Date().toISOString();
-  student.rejectionReason = undefined;
-  await student.save();
+    student.status = 'approved';
+    student.approvedAt = new Date().toISOString();
+    student.rejectionReason = undefined;
+    await student.save();
 
-  try {
-    return await this.generateStudentQrCode(student.studentId);
-  } catch (error) {
-    console.error('QR generation/upload failed:', error);
+    if (shouldSendEmail) {
+      void this.emailService.sendApprovalEmail({
+        email: student.email,
+        name: student.fullNameEnglish ?? student.email,
+        studentId: student.studentId,
+      });
+    }
 
-    const approvedStudent = await this.studentModel
-      .findById(student._id)
-      .select('-password')
-      .exec();
+    try {
+      return await this.generateStudentQrCode(student.studentId);
+    } catch (error) {
+      this.logger.error(
+        'QR generation/upload failed',
+        error instanceof Error ? error.message : String(error),
+      );
 
-    return approvedStudent ?? student;
+      const approvedStudent = await this.studentModel
+        .findById(student._id)
+        .select('-password')
+        .exec();
+
+      return approvedStudent ?? student;
+    }
   }
-}
 
   async rejectStudent(id: string, dto: RejectStudentDto): Promise<object> {
     const student = await this.findStudentByIdOrStudentId(id);
@@ -394,7 +412,9 @@ export class StudentsService {
       name: student.fullNameEnglish ?? '',
       email: student.email,
       phone: student.phone ?? student.whatsappNo ?? '',
-      modules: student.subjects?.length ? student.subjects : student.modules ?? [],
+      modules: student.subjects?.length
+        ? student.subjects
+        : student.modules ?? [],
       batch: student.batch ?? '',
       status: student.status,
       enrolledAt: student.enrolledAt,
@@ -425,43 +445,58 @@ export class StudentsService {
       admissionNo: student.admissionNumber,
     };
 
-    let qrBuffer: Buffer;
-
     try {
-      qrBuffer = await QRCode.toBuffer(JSON.stringify(qrPayload), {
+      const qrCode = await QRCode.toDataURL(JSON.stringify(qrPayload), {
+        errorCorrectionLevel: 'M',
+        margin: 1,
+        width: 300,
+      });
+
+      const qrBuffer = await QRCode.toBuffer(JSON.stringify(qrPayload), {
         errorCorrectionLevel: 'M',
         margin: 1,
         type: 'png',
         width: 300,
       });
-    } catch {
-      throw new InternalServerErrorException('Failed to generate QR code');
-    }
 
-    const uploadedQr = await this.storageService.uploadQrImage({
-      body: qrBuffer,
-      originalName: `${student.studentId}.png`,
-      contentType: 'image/png',
-      scope: student.studentId,
-      metadata: {
-        studentId: student.studentId,
-      },
-    });
-
-    const updated = await this.studentModel
-      .findByIdAndUpdate(
-        student._id,
-        {
-          $set: {
-            qrCodeUrl: uploadedQr.publicUrl,
-            qrImageKey: uploadedQr.key,
-          },
+      const uploadedQr = await this.storageService.uploadQrImage({
+        body: qrBuffer,
+        originalName: `${student.studentId}.png`,
+        contentType: 'image/png',
+        scope: student.studentId,
+        metadata: {
+          studentId: student.studentId,
         },
-        { returnDocument: 'after' },
-      )
-      .select('-password');
+      });
 
-    return updated ?? student;
+      const updated = await this.studentModel
+        .findByIdAndUpdate(
+          student._id,
+          {
+            $set: {
+              qrCode,
+              qrCodeUrl: uploadedQr.publicUrl,
+              qrImageKey: uploadedQr.key,
+            },
+          },
+          { returnDocument: 'after' },
+        )
+        .select('-password');
+
+      return updated ?? student;
+    } catch (error) {
+      this.logger.error(
+        `QR generation/upload failed for student ${studentId}`,
+        error instanceof Error ? error.message : String(error),
+      );
+
+      const fallback = await this.studentModel
+        .findOne({ studentId })
+        .select('-password')
+        .lean();
+
+      return (fallback ?? student) as unknown as Student;
+    }
   }
 
   private resolveDateOfBirth(personal: RegisterStudentDto['personal']): Date {
