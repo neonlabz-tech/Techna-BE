@@ -333,9 +333,12 @@ export class StudentsService {
   } catch (error) {
     console.error('QR generation/upload failed:', error);
 
-    throw new InternalServerErrorException(
-      'Student approved, but QR generation/upload failed. Check R2 env values.',
-    );
+    const approvedStudent = await this.studentModel
+      .findById(student._id)
+      .select('-password')
+      .exec();
+
+    return approvedStudent ?? student;
   }
 }
 
