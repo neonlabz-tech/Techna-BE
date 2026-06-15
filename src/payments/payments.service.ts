@@ -114,10 +114,12 @@ export class PaymentsService {
   }
 
   private async resolveStudent(studentId: string) {
+    const conditions: object[] = [{ studentId }];
+    if (Types.ObjectId.isValid(studentId)) {
+      conditions.unshift({ _id: studentId });
+    }
     const student = await this.studentModel
-      .findOne({
-        $or: [{ _id: studentId }, { studentId }],
-      })
+      .findOne({ $or: conditions })
       .lean();
 
     if (!student) {
@@ -171,9 +173,11 @@ export class PaymentsService {
 
   private async generateUniqueReceiptNo() {
     for (let attempt = 0; attempt < 5; attempt += 1) {
-      const receiptNo = `REC-${Date.now()}-${Math.floor(Math.random() * 10000)
-        .toString()
-        .padStart(4, '0')}`;
+      const now = new Date();
+      const datePart = now.toISOString().slice(0, 10).replace(/-/g, '');
+      const timePart = now.toTimeString().slice(0, 8).replace(/:/g, '');
+      const randPart = Math.floor(Math.random() * 900 + 100).toString();
+      const receiptNo = `RCP-${datePart}-${timePart}-${randPart}`;
       const existing = await this.paymentModel.findOne({ receiptNo }).lean();
 
       if (!existing) {
