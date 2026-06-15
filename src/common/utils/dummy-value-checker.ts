@@ -1,12 +1,12 @@
-export const DUMMY_VALUES = [
-  'test', 'testing', 'asdf', 'asdfasdf', 'xxx', 'xxxx',
-  '123', '1234', '12345', 'sample', 'demo', 'lorem',
-  'lorem ipsum', 'abc', 'abcd', 'foo', 'bar', 'foobar',
-  'untitled', 'new module', 'qwerty',
+const DUMMY_PATTERNS = [
+  /^[a-z]{4,}$/i,
+  /(.)\1{2,}/,
+  /^(test|testing|dummy|asdf|qwerty|zxcv|abcd|abc|xyz|foo|bar|baz|string|undefined|null|na|n\/a|sample|example|demo|lorem|untitled|xxx+|new module|foobar)\d*$/i,
+  /^[^aeiou]{5,}$/i,
 ];
 
 export function isDummyValue(value: string): boolean {
   if (!value) return false;
   const normalized = value.trim().toLowerCase();
-  return DUMMY_VALUES.includes(normalized);
+  return DUMMY_PATTERNS.some(p => p.test(normalized));
 }
