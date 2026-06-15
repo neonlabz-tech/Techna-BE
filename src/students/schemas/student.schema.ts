@@ -42,6 +42,8 @@ export class OlResultRow {
 
   @Prop({ enum: Object.values(OlGrade), default: null })
   tamil?: string;
+
+  
 }
 
 export const OlResultRowSchema = SchemaFactory.createForClass(OlResultRow);
@@ -100,6 +102,14 @@ export class Student {
 
   @Prop()
   qrCode?: string;
+
+    @Prop()
+qrImageKey?: string;
+
+@Prop()
+qrCodeUrl?: string;
+
+
 
   // ── EXISTING: Core account fields ──────────────────────────────────────────
 
@@ -205,8 +215,18 @@ export class Student {
   @Prop()
   residingSince?: string;
 
-  @Prop({ enum: ['Sinhala', 'Tamil', 'Muslim', 'Burgher', 'Malay', 'Other'] })
-  race?: string;
+  @Prop({
+  enum: [
+    'Sri Lankan Tamil',
+    'Sri Lankan Moor',
+    'Indian Tamil',
+    'Sinhalese',
+    'Burgher',
+    'Malay',
+    'Other',
+  ],
+})
+race?: string;
 
   @Prop({ enum: ['Buddhism', 'Hinduism', 'Islam', 'Christianity(RC/Non.RC)', 'Other'] })
   religion?: string;
