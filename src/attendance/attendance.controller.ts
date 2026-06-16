@@ -32,7 +32,6 @@ export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
 
   @Post('scan-qr')
-  @Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.CREATED)
   scanQr(@Body() scanAttendanceDto: ScanAttendanceDto) {
     return this.attendanceService.scanQr(scanAttendanceDto);
@@ -74,9 +73,7 @@ export class AttendanceController {
   @HttpCode(HttpStatus.OK)
   findByStudent(@Param('studentId') studentId: string, @Request() req: any) {
     if (req.user.role === Role.STUDENT && req.user.userId !== studentId) {
-      throw new ForbiddenException(
-        'You can only view your own attendance',
-      );
+      throw new ForbiddenException('You can only view your own attendance');
     }
 
     return this.attendanceService.findByStudent(studentId);
