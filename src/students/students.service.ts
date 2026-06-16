@@ -60,7 +60,10 @@ export class StudentsService {
     return student;
   }
 
-  async registerStudent(dto: RegisterStudentDto) {
+  async registerStudent(
+    dto: RegisterStudentDto,
+    profilePhoto?: Express.Multer.File,
+  ) {
     if (!dto.subjectSelection.agreed) {
       throw new BadRequestException(
         'You must agree to the terms before submitting the registration',
@@ -104,6 +107,19 @@ export class StudentsService {
     ]);
 
     const selectedSubjects = dto.subjectSelection.subjects ?? [];
+    const uploadedProfilePhoto = profilePhoto
+      ? await this.storageService.uploadProfilePhoto({
+          body: profilePhoto.buffer,
+          originalName: profilePhoto.originalname,
+          contentType: profilePhoto.mimetype,
+          scope: studentId,
+          metadata: {
+            studentId,
+            email,
+          },
+        })
+      : null;
+    const profilePhotoUrl = uploadedProfilePhoto?.publicUrl ?? undefined;
 
     const payload = {
       studentId,
@@ -173,6 +189,14 @@ export class StudentsService {
       agreed: dto.subjectSelection.agreed,
 
       batch: dto.batch?.trim() || '',
+
+      ...(uploadedProfilePhoto
+        ? {
+            profilePhoto: profilePhotoUrl,
+            avatar: profilePhotoUrl,
+            profilePhotoKey: uploadedProfilePhoto.key,
+          }
+        : {}),
     };
 
     try {

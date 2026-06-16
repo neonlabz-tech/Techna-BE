@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -9,8 +10,13 @@ import {
   Post,
   Query,
   Request,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../decorators/roles.decorator';
@@ -46,10 +52,36 @@ export class StudentsController {
   // The student cannot log in until an admin approves.
   //
   // POST /students/register
-  // Body: RegisterStudentDto
+  // Body: multipart/form-data with payload JSON and optional profilePhoto file
   @Post('register')
-  register(@Body() dto: RegisterStudentDto) {
-    return this.studentsService.registerStudent(dto);
+  @UseInterceptors(FileInterceptor('profilePhoto'))
+  async register(
+    @Body('payload') payload: string,
+    @UploadedFile() profilePhoto?: Express.Multer.File,
+  ) {
+    if (!payload) {
+      throw new BadRequestException('Registration payload is required');
+    }
+
+    let parsedPayload: unknown;
+
+    try {
+      parsedPayload = JSON.parse(payload);
+    } catch {
+      throw new BadRequestException('Invalid registration payload');
+    }
+
+    const dto = plainToInstance(RegisterStudentDto, parsedPayload);
+    const validationErrors = await validate(dto, {
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    });
+
+    if (validationErrors.length > 0) {
+      throw new BadRequestException(validationErrors);
+    }
+
+    return this.studentsService.registerStudent(dto, profilePhoto);
   }
 
   // ─── ADMIN: Get all students (with optional status filter) ────────────────
