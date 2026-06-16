@@ -1,8 +1,9 @@
-import { IsString, IsNotEmpty, IsUrl, IsOptional, IsBoolean } from 'class-validator';
+import { IsString, IsNotEmpty, IsUrl, IsOptional, IsBoolean, MinLength } from 'class-validator';
 
 export class AddResourceUrlDto {
   @IsString()
   @IsNotEmpty()
+  @MinLength(3, { message: 'Title must be at least 3 characters' })
   title!: string;
 
   @IsString()
