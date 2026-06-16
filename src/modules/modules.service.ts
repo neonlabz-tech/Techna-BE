@@ -53,6 +53,19 @@ export class ModulesService {
     }
   }
 
+  async findPublicModules() {
+    try {
+      return await this.moduleModel
+        .find()
+        .sort({ createdAt: -1 });
+    } catch (error: unknown) {
+      throw new InternalServerErrorException(
+        'Failed to fetch modules: ' +
+          (error instanceof Error ? error.message : 'Unknown error'),
+      );
+    }
+  }
+
   async findOne(id: string) {
     try {
       const module = await this.moduleModel.findById(id);
