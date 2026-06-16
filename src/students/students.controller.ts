@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -9,14 +10,19 @@ import {
   Post,
   Query,
   Request,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiBody } from '@nestjs/swagger';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../decorators/roles.decorator';
 import { Role } from '../enums/role.enum';
-import { RolesGuard } from '../auth/roles.guard';
 import { RegisterStudentDto } from './dto/register-student.dto';
 import { RejectStudentDto } from './dto/reject-student.dto';
 import { StudentsService } from './students.service';
@@ -32,33 +38,41 @@ interface AuthenticatedRequest {
   };
 }
 
-/**
- * NOTE: This controller does NOT apply @UseGuards at the class level.
- * Guards are applied per-route so that public endpoints (register) can
- * coexist with protected endpoints in the same controller.
- */
 @Controller('students')
 export class StudentsController {
   constructor(private readonly studentsService: StudentsService) {}
 
-  // ─── PUBLIC: Submit registration form ────────────────────────────────────
-  // No JWT required. Anyone can submit a registration.
-  // Creates a student record with status: 'pending'.
-  // The student cannot log in until an admin approves.
-  //
-  // POST /students/register
-  // Body: RegisterStudentDto
   @Post('register')
-  register(@Body() dto: RegisterStudentDto) {
-    return this.studentsService.registerStudent(dto);
+  @UseInterceptors(FileInterceptor('profilePhoto'))
+  async register(
+    @Body('payload') payload: string,
+    @UploadedFile() profilePhoto?: Express.Multer.File,
+  ) {
+    if (!payload) {
+      throw new BadRequestException('Registration payload is required');
+    }
+
+    let parsedPayload: unknown;
+
+    try {
+      parsedPayload = JSON.parse(payload);
+    } catch {
+      throw new BadRequestException('Invalid registration payload');
+    }
+
+    const dto = plainToInstance(RegisterStudentDto, parsedPayload);
+    const validationErrors = await validate(dto, {
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    });
+
+    if (validationErrors.length > 0) {
+      throw new BadRequestException(validationErrors);
+    }
+
+    return this.studentsService.registerStudent(dto, profilePhoto);
   }
 
-  // ─── ADMIN: Get all students (with optional status filter) ────────────────
-  //
-  // GET /students
-  // GET /students?status=pending
-  // GET /students?status=approved
-  // GET /students?status=rejected
   @Get()
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -67,9 +81,6 @@ export class StudentsController {
     return this.studentsService.findAll(status);
   }
 
-  // ─── ADMIN or own STUDENT: Get student profile ────────────────────────────
-  //
-  // GET /students/:id
   @Get(':id')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -85,12 +96,6 @@ export class StudentsController {
     return this.studentsService.findOne(id);
   }
 
-  // ─── ADMIN or own STUDENT: Enrolment history ─────────────────────────────
-  // Returns the full enrolment record for a student.
-  // Students may only request their own history.
-  // Admins may request any student's history.
-  //
-  // GET /students/:id/enrolment-history
   @Get(':id/enrolment-history')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -106,9 +111,6 @@ export class StudentsController {
     );
   }
 
-  // ─── ADMIN: Create student directly ──────────────────────────────────────
-  //
-  // POST /students
   @Post()
   @ApiBearerAuth('access-token')
   @ApiBody({
@@ -139,9 +141,6 @@ export class StudentsController {
     return this.studentsService.create(body);
   }
 
-  // ─── ADMIN: Update student ────────────────────────────────────────────────
-  //
-  // PATCH /students/:id
   @Patch(':id')
   @ApiBearerAuth('access-token')
   @ApiBody({
@@ -171,9 +170,6 @@ export class StudentsController {
     return this.studentsService.update(id, body);
   }
 
-  // ─── ADMIN: Delete student ────────────────────────────────────────────────
-  //
-  // DELETE /students/:id
   @Delete(':id')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -182,10 +178,6 @@ export class StudentsController {
     return this.studentsService.remove(id);
   }
 
-  // ─── ADMIN: Approve registration ─────────────────────────────────────────
-  // Sets status → 'approved', records approvedAt, generates QR code.
-  //
-  // PATCH /students/:id/approve
   @Patch(':id/approve')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -194,11 +186,6 @@ export class StudentsController {
     return this.studentsService.approveStudent(id);
   }
 
-  // ─── ADMIN: Reject registration ───────────────────────────────────────────
-  // Sets status → 'rejected', stores reason, sends rejection email.
-  //
-  // PATCH /students/:id/reject
-  // Body: { reason: string }
   @Patch(':id/reject')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -210,9 +197,6 @@ export class StudentsController {
     return this.studentsService.rejectStudent(id, rejectStudentDto);
   }
 
-  // ─── ADMIN: Generate QR code ──────────────────────────────────────────────
-  //
-  // POST /students/:studentId/qr-code
   @Post(':studentId/qr-code')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
