@@ -28,19 +28,19 @@ export class OlResultRow {
   @Prop({ required: true })
   indexNumber!: string;
 
-  @Prop({ enum: Object.values(OlGrade), default: null })
+  @Prop({ type: String, default: null })
   english?: string;
 
-  @Prop({ enum: Object.values(OlGrade), default: null })
+  @Prop({ type: String, default: null })
   mathematics?: string;
 
-  @Prop({ enum: Object.values(OlGrade), default: null })
+  @Prop({ type: String, default: null })
   science?: string;
 
-  @Prop({ enum: Object.values(OlGrade), default: null })
+  @Prop({ type: String, default: null })
   sinhala?: string;
 
-  @Prop({ enum: Object.values(OlGrade), default: null })
+  @Prop({ type: String, default: null })
   tamil?: string;
 }
 
@@ -196,7 +196,7 @@ export class Student {
   @Prop()
   permanentAddress?: string;
 
-  @Prop({ enum: Object.values(District) })
+  @Prop({ type: String, default: '' })
   administrativeDistrict?: string;
 
   @Prop()
@@ -205,13 +205,13 @@ export class Student {
   @Prop()
   residingSince?: string;
 
-  @Prop({ enum: ['Sinhala', 'Tamil', 'Muslim', 'Burgher', 'Malay', 'Other'] })
+  @Prop({ type: String, default: '' })
   race?: string;
 
-  @Prop({ enum: ['Buddhism', 'Hinduism', 'Islam', 'Christianity(RC/Non.RC)', 'Other'] })
+  @Prop({ type: String, default: '' })
   religion?: string;
 
-  @Prop({ enum: ['YES', 'NO'], default: 'YES' })
+  @Prop({ type: String, default: 'YES' })
   citizenByDescent?: string;
 
   @Prop()
@@ -233,7 +233,7 @@ export class Student {
   @Prop({ uppercase: true })
   guardianName?: string;
 
-  @Prop({ enum: ['Father', 'Mother', 'Guardian'], default: 'Mother' })
+  @Prop({ type: String, default: 'Mother' })
   contactPerson?: string;
 
   @Prop()
@@ -249,7 +249,7 @@ export class Student {
   // NEW: Section D — O/L academic records
   // ══════════════════════════════════════════════════════════════════════════
 
-  @Prop({ enum: ['Local O/L', 'London O/L'], default: 'Local O/L' })
+  @Prop({ type: String, default: 'Local O/L' })
   olCategory?: string;
 
   @Prop()
@@ -261,7 +261,7 @@ export class Student {
   @Prop({ uppercase: true })
   olNameUsed?: string;
 
-  @Prop({ enum: ['Accept', 'Change'], default: 'Accept' })
+  @Prop({ type: String, default: 'Accept' })
   olAccept?: string;
 
   @Prop({ type: [OlResultRowSchema], default: [] })
@@ -271,7 +271,7 @@ export class Student {
   // NEW: Section E — A/L subject selection
   // ══════════════════════════════════════════════════════════════════════════
 
-  @Prop({ type: [String], enum: Object.values(AlSubject) })
+  @Prop({ type: [String], default: [] })
   subjects?: string[];
 
   @Prop()
