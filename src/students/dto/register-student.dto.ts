@@ -5,8 +5,6 @@ import {
   IsArray,
   IsBoolean,
   IsEmail,
-  IsEnum,
-  IsIn,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -19,42 +17,40 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-import { AlSubject, District, OlGrade } from '../schemas/student.schema';
-
 export class OlResultRowDto {
   @ApiProperty({ example: '2024' })
   @IsString()
   @IsNotEmpty()
-  year: string;
+  year!: string;
 
   @ApiProperty({ example: '12345678' })
   @IsString()
   @IsNotEmpty()
-  indexNumber: string;
+  indexNumber!: string;
 
-  @ApiPropertyOptional({ enum: OlGrade, example: OlGrade.A })
+  @ApiPropertyOptional({ example: 'A' })
   @IsOptional()
-  @IsEnum(OlGrade)
+  @IsString()
   english?: string;
 
-  @ApiPropertyOptional({ enum: OlGrade, example: OlGrade.B })
+  @ApiPropertyOptional({ example: 'B' })
   @IsOptional()
-  @IsEnum(OlGrade)
+  @IsString()
   mathematics?: string;
 
-  @ApiPropertyOptional({ enum: OlGrade, example: OlGrade.C })
+  @ApiPropertyOptional({ example: 'C' })
   @IsOptional()
-  @IsEnum(OlGrade)
+  @IsString()
   science?: string;
 
-  @ApiPropertyOptional({ enum: OlGrade, example: OlGrade.A })
+  @ApiPropertyOptional({ example: 'A' })
   @IsOptional()
-  @IsEnum(OlGrade)
+  @IsString()
   sinhala?: string;
 
-  @ApiPropertyOptional({ enum: OlGrade, example: OlGrade.B })
+  @ApiPropertyOptional({ example: 'B' })
   @IsOptional()
-  @IsEnum(OlGrade)
+  @IsString()
   tamil?: string;
 }
 
@@ -62,13 +58,13 @@ export class AccountSectionDto {
   @ApiProperty({ example: 'kasun.perera@example.com' })
   @IsEmail({}, { message: 'A valid email address is required' })
   @IsNotEmpty()
-  email: string;
+  email!: string;
 
   @ApiProperty({ example: 'password123', minLength: 6 })
   @IsString()
   @MinLength(6, { message: 'Password must be at least 6 characters' })
   @IsNotEmpty()
-  password: string;
+  password!: string;
 }
 
 export class PersonalSectionDto {
@@ -80,7 +76,7 @@ export class PersonalSectionDto {
   @ApiProperty({ example: 'Kasun Perera' })
   @IsString()
   @IsNotEmpty({ message: 'Full name in English is required' })
-  fullNameEnglish: string;
+  fullNameEnglish!: string;
 
   @ApiPropertyOptional({ example: '2008-05-20' })
   @IsOptional()
@@ -111,7 +107,7 @@ export class PersonalSectionDto {
   @ApiProperty({ example: '200812345678' })
   @IsString()
   @IsNotEmpty({ message: 'NIC number is required' })
-  nicNo: string;
+  nicNo!: string;
 
   @ApiPropertyOptional({ example: 'Central College' })
   @IsOptional()
@@ -124,7 +120,7 @@ export class PersonalSectionDto {
   @Matches(/^(?:\+94|0094|0)[0-9]{9}$/, {
     message: 'Invalid WhatsApp number - use format: 0771234567 or +94771234567',
   })
-  whatsappNo: string;
+  whatsappNo!: string;
 
   @ApiPropertyOptional({ example: '0712345678' })
   @IsOptional()
@@ -134,13 +130,11 @@ export class PersonalSectionDto {
   @ApiProperty({ example: 'No. 20, Lake Road, Kandy' })
   @IsString()
   @IsNotEmpty({ message: 'Permanent address is required' })
-  permanentAddress: string;
+  permanentAddress!: string;
 
-  @ApiProperty({ enum: District, example: District.KANDY })
-  @IsEnum(District, {
-    message: 'administrativeDistrict must be a valid Sri Lankan district',
-  })
-  administrativeDistrict: string;
+  @ApiProperty({ example: 'Kandy' })
+  @IsString()
+  administrativeDistrict!: string;
 
   @ApiPropertyOptional({ example: '0812223344' })
   @IsOptional()
@@ -152,25 +146,19 @@ export class PersonalSectionDto {
   @IsString()
   residingSince?: string;
 
-  @ApiPropertyOptional({
-    enum: ['Sinhala', 'Tamil', 'Muslim', 'Burgher', 'Malay', 'Other'],
-    example: 'Sinhala',
-  })
+  @ApiPropertyOptional({ example: 'Sinhala' })
   @IsOptional()
-  @IsIn(['Sinhala', 'Tamil', 'Muslim', 'Burgher', 'Malay', 'Other'])
+  @IsString()
   race?: string;
 
-  @ApiPropertyOptional({
-    enum: ['Buddhism', 'Hinduism', 'Islam', 'Christianity(RC/Non.RC)', 'Other'],
-    example: 'Buddhism',
-  })
+  @ApiPropertyOptional({ example: 'Buddhism' })
   @IsOptional()
-  @IsIn(['Buddhism', 'Hinduism', 'Islam', 'Christianity(RC/Non.RC)', 'Other'])
+  @IsString()
   religion?: string;
 
-  @ApiPropertyOptional({ enum: ['YES', 'NO'], example: 'YES' })
+  @ApiPropertyOptional({ example: 'YES' })
   @IsOptional()
-  @IsIn(['YES', 'NO'])
+  @IsString()
   citizenByDescent?: string;
 
   @ApiPropertyOptional({ example: 'No. 25, School Road, Kandy' })
@@ -200,9 +188,9 @@ export class ParentSectionDto {
   @IsString()
   guardianName?: string;
 
-  @ApiPropertyOptional({ enum: ['Father', 'Mother', 'Guardian'], example: 'Father' })
+  @ApiPropertyOptional({ example: 'Father' })
   @IsOptional()
-  @IsIn(['Father', 'Mother', 'Guardian'])
+  @IsString()
   contactPerson?: string;
 
   @ApiPropertyOptional({ example: 'No. 20, Lake Road, Kandy' })
@@ -222,9 +210,9 @@ export class ParentSectionDto {
 }
 
 export class OlRecordsSectionDto {
-  @ApiPropertyOptional({ enum: ['Local O/L', 'London O/L'], example: 'Local O/L' })
+  @ApiPropertyOptional({ example: 'Local O/L' })
   @IsOptional()
-  @IsIn(['Local O/L', 'London O/L'])
+  @IsString()
   olCategory?: string;
 
   @ApiPropertyOptional({ example: '2024' })
@@ -242,9 +230,9 @@ export class OlRecordsSectionDto {
   @IsString()
   olNameUsed?: string;
 
-  @ApiPropertyOptional({ enum: ['Accept', 'Change'], example: 'Accept' })
+  @ApiPropertyOptional({ example: 'Accept' })
   @IsOptional()
-  @IsIn(['Accept', 'Change'])
+  @IsString()
   olAccept?: string;
 
   @ApiPropertyOptional({ type: [OlResultRowDto] })
@@ -256,18 +244,15 @@ export class OlRecordsSectionDto {
 }
 
 export class SubjectSectionDto {
-  @ApiProperty({ enum: AlSubject, isArray: true, example: [AlSubject.ICT] })
+  @ApiProperty({ isArray: true, example: ['Information Communication Technology'] })
   @IsArray()
   @ArrayMinSize(1, { message: 'At least one subject must be selected' })
-  @IsEnum(AlSubject, {
-    each: true,
-    message: `Each subject must be one of: ${Object.values(AlSubject).join(', ')}`,
-  })
-  subjects: string[];
+  @IsString({ each: true })
+  subjects!: string[];
 
   @ApiProperty({ example: true })
   @IsBoolean({ message: 'You must agree to the terms to submit' })
-  agreed: boolean;
+  agreed!: boolean;
 }
 
 export class RegisterStudentDto {
@@ -275,13 +260,13 @@ export class RegisterStudentDto {
   @ValidateNested()
   @Type(() => AccountSectionDto)
   @IsNotEmpty()
-  account: AccountSectionDto;
+  account!: AccountSectionDto;
 
   @ApiProperty({ type: PersonalSectionDto })
   @ValidateNested()
   @Type(() => PersonalSectionDto)
   @IsNotEmpty()
-  personal: PersonalSectionDto;
+  personal!: PersonalSectionDto;
 
   @ApiPropertyOptional({ type: ParentSectionDto })
   @IsOptional()
@@ -299,7 +284,7 @@ export class RegisterStudentDto {
   @ValidateNested()
   @Type(() => SubjectSectionDto)
   @IsNotEmpty()
-  subjectSelection: SubjectSectionDto;
+  subjectSelection!: SubjectSectionDto;
 
   @ApiPropertyOptional({ example: '2026 A/L' })
   @IsOptional()

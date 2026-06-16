@@ -3,6 +3,7 @@ import {
   IsString,
   IsNumber,
   IsIn,
+  MinLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
@@ -11,6 +12,7 @@ export class UpdateModuleDto {
   @ApiPropertyOptional({ example: 'Advanced ICT' })
   @IsOptional()
   @IsString()
+  @MinLength(3, { message: 'Name must be at least 3 characters' })
   name?: string;
 
   @ApiPropertyOptional({ example: '665f1b2c3d4e5f6789012345' })
@@ -26,6 +28,7 @@ export class UpdateModuleDto {
   @ApiPropertyOptional({ example: 'Updated A/L ICT module details' })
   @IsOptional()
   @IsString()
+  @MinLength(3, { message: 'Description must be at least 3 characters' })
   description?: string;
 
   @ApiPropertyOptional({ example: '8 months' })
