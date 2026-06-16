@@ -13,6 +13,7 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
 import { AttendanceService } from './attendance.service';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
@@ -31,13 +32,13 @@ export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
 
   @Post('scan-qr')
-  @Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.CREATED)
   scanQr(@Body() scanAttendanceDto: ScanAttendanceDto) {
     return this.attendanceService.scanQr(scanAttendanceDto);
   }
 
   @Post()
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.CREATED)
@@ -48,6 +49,7 @@ export class AttendanceController {
   }
 
   @Get()
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.OK)
@@ -56,6 +58,7 @@ export class AttendanceController {
   }
 
   @Get('report')
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.OK)
@@ -64,20 +67,20 @@ export class AttendanceController {
   }
 
   @Get('student/:studentId')
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.TEACHER, Role.STUDENT)
   @HttpCode(HttpStatus.OK)
   findByStudent(@Param('studentId') studentId: string, @Request() req: any) {
     if (req.user.role === Role.STUDENT && req.user.userId !== studentId) {
-      throw new ForbiddenException(
-        'You can only view your own attendance',
-      );
+      throw new ForbiddenException('You can only view your own attendance');
     }
 
     return this.attendanceService.findByStudent(studentId);
   }
 
   @Get(':id')
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.OK)
@@ -86,6 +89,7 @@ export class AttendanceController {
   }
 
   @Patch(':id')
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.TEACHER)
   @HttpCode(HttpStatus.OK)
@@ -97,6 +101,7 @@ export class AttendanceController {
   }
 
   @Delete(':id')
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)

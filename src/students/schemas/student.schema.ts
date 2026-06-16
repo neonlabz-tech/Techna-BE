@@ -28,20 +28,22 @@ export class OlResultRow {
   @Prop({ required: true })
   indexNumber!: string;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   english?: string;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   mathematics?: string;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   science?: string;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   sinhala?: string;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   tamil?: string;
+
+  
 }
 
 export const OlResultRowSchema = SchemaFactory.createForClass(OlResultRow);
@@ -101,6 +103,14 @@ export class Student {
   @Prop()
   qrCode?: string;
 
+    @Prop()
+qrImageKey?: string;
+
+@Prop()
+qrCodeUrl?: string;
+
+
+
   // ── EXISTING: Core account fields ──────────────────────────────────────────
 
   @Prop({ required: true, lowercase: true, trim: true })
@@ -112,8 +122,8 @@ export class Student {
   @Prop({ required: true })
   phone!: string; // kept for backward compatibility (maps to whatsappNo)
 
-  @Prop({ required: true })
-  batch!: string;
+  @Prop({ default: '' })
+  batch?: string;
 
   @Prop({ type: [String], default: [] })
   modules!: string[]; // kept for backward compatibility
@@ -202,7 +212,7 @@ export class Student {
   @Prop()
   permanentAddress?: string;
 
-  @Prop()
+  @Prop({ type: String, default: '' })
   administrativeDistrict?: string;
 
   @Prop()
@@ -211,13 +221,13 @@ export class Student {
   @Prop()
   residingSince?: string;
 
-  @Prop()
+  @Prop({ type: String, default: '' })
   race?: string;
 
-  @Prop()
+  @Prop({ type: String, default: '' })
   religion?: string;
 
-  @Prop({ enum: ['YES', 'NO'], default: 'YES' })
+  @Prop({ type: String, default: 'YES' })
   citizenByDescent?: string;
 
   @Prop()
@@ -239,7 +249,7 @@ export class Student {
   @Prop({ uppercase: true })
   guardianName?: string;
 
-  @Prop({ enum: ['Father', 'Mother', 'Guardian'], default: 'Mother' })
+  @Prop({ type: String, default: 'Mother' })
   contactPerson?: string;
 
   @Prop()
@@ -255,7 +265,7 @@ export class Student {
   // NEW: Section D — O/L academic records
   // ══════════════════════════════════════════════════════════════════════════
 
-  @Prop({ enum: ['Local O/L', 'London O/L'], default: 'Local O/L' })
+  @Prop({ type: String, default: 'Local O/L' })
   olCategory?: string;
 
   @Prop()
@@ -267,7 +277,7 @@ export class Student {
   @Prop({ uppercase: true })
   olNameUsed?: string;
 
-  @Prop({ enum: ['Accept', 'Change'], default: 'Accept' })
+  @Prop({ type: String, default: 'Accept' })
   olAccept?: string;
 
   @Prop({ type: [OlResultRowSchema], default: [] })
@@ -278,16 +288,16 @@ export class Student {
   // ══════════════════════════════════════════════════════════════════════════
 
   @Prop({ type: [String], default: [] })
-subjects?: string[];
+  subjects?: string[];
 
   @Prop()
   agreed?: boolean;
 
-  @Prop()
-qrCodeUrl?: string;
+  @Prop({ type: String })
+  resetToken?: string;
 
-@Prop()
-qrImageKey?: string;
+  @Prop({ type: Date })
+  resetTokenExpiry?: Date;
 }
 
 export const StudentSchema = SchemaFactory.createForClass(Student);

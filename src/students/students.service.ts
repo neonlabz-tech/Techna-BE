@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -12,8 +13,8 @@ import { Model, Types } from 'mongoose';
 import { randomUUID } from 'node:crypto';
 import * as QRCode from 'qrcode';
 
-import { StorageService } from '../storage/storage.service';
 import { EmailService } from '../email/email.service';
+import { StorageService } from '../storage/storage.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { EnrolmentHistoryDto } from './dto/enrolment-history.dto';
 import { RegisterStudentDto } from './dto/register-student.dto';
@@ -33,6 +34,8 @@ export type UpdateStudentPayload = Partial<CreateStudentPayload>;
 
 @Injectable()
 export class StudentsService {
+  private readonly logger = new Logger(StudentsService.name);
+
   constructor(
     @InjectModel(Student.name)
     private readonly studentModel: Model<StudentDocument>,
@@ -174,8 +177,7 @@ export class StudentsService {
         dto.parent?.guardianName?.trim().toUpperCase(),
 
       parentPhone:
-        dto.personal.parentsNo?.trim() ||
-        dto.parent?.guardianMobile?.trim(),
+        dto.personal.parentsNo?.trim() || dto.parent?.guardianMobile?.trim(),
 
       olCategory: dto.olRecords?.olCategory ?? 'Local O/L',
       olYear: dto.olRecords?.olYear?.trim(),
@@ -228,19 +230,11 @@ export class StudentsService {
   async create(data: CreateStudentPayload) {
     this.validateRegistration(data);
 
-    const selectedSubjects =
-      data.subjects?.length ? data.subjects : data.modules?.length ? data.modules : [];
-
-    console.log('[StudentsService.create] payload check', {
-      nicNo: data.nicNo,
-      school: data.school,
-      fatherName: data.fatherName,
-      motherName: data.motherName,
-      guardianMobile: data.guardianMobile,
-      race: data.race,
-      religion: data.religion,
-      data,
-    });
+    const selectedSubjects = data.subjects?.length
+      ? data.subjects
+      : data.modules?.length
+        ? data.modules
+        : [];
 
     const payload: CreateStudentPayload = {
       ...data,
@@ -256,8 +250,7 @@ export class StudentsService {
         data.email,
       address: data.permanentAddress?.trim() || data.address?.trim(),
       permanentAddress: data.permanentAddress?.trim() || data.address?.trim(),
-      dob: data.dob || data.dateOfBirth,
-      dateOfBirth: data.dateOfBirth || data.dob,
+      dateOfBirth: data.dateOfBirth,
       parentName:
         data.motherName?.trim() ||
         data.fatherName?.trim() ||
@@ -275,11 +268,7 @@ export class StudentsService {
       enrolledAt: data.enrolledAt ?? new Date().toISOString(),
     };
 
-    if (!payload.password) {
-      payload.password = await bcrypt.hash('Student@123', 10);
-    } else {
-      payload.password = await bcrypt.hash(payload.password, 10);
-    }
+    payload.password = await bcrypt.hash(payload.password || 'Student@123', 10);
 
     try {
       const student = await this.studentModel.create(payload);
@@ -307,12 +296,11 @@ export class StudentsService {
       data.password = await bcrypt.hash(data.password, 10);
     }
 
-    const selectedSubjects =
-      data.subjects?.length
-        ? data.subjects
-        : data.modules?.length
-          ? data.modules
-          : undefined;
+    const selectedSubjects = data.subjects?.length
+      ? data.subjects
+      : data.modules?.length
+        ? data.modules
+        : undefined;
 
     const payload = {
       ...data,
@@ -325,7 +313,10 @@ export class StudentsService {
     };
 
     const student = await this.studentModel
-      .findByIdAndUpdate(id, payload, { new: true, runValidators: true })
+      .findByIdAndUpdate(id, payload, {
+        returnDocument: 'after',
+        runValidators: true,
+      })
       .select('-password')
       .lean();
 
@@ -335,24 +326,62 @@ export class StudentsService {
   }
 
   async remove(id: string) {
-    const student = await this.studentModel.findByIdAndDelete(id).lean();
+    const student = await this.studentModel.findById(id).lean();
 
-    if (!student) throw new NotFoundException('Student not found');
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
 
-    return { message: 'Student deleted successfully' };
+    if (student.qrImageKey) {
+      try {
+        await this.storageService.deleteObject(student.qrImageKey);
+      } catch (error) {
+        this.logger.error(
+          'Failed to delete QR image from R2',
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    }
+
+    await this.studentModel.findByIdAndDelete(id);
+
+    return {
+      message: 'Student and QR deleted successfully',
+    };
   }
 
   async approveStudent(id: string): Promise<Student> {
     const student = await this.findStudentByIdOrStudentId(id);
+    const shouldSendEmail = student.status !== 'approved';
 
-    if (student.status !== 'approved') {
-      student.status = 'approved';
-      student.approvedAt = new Date().toISOString();
-      student.rejectionReason = undefined;
-      await student.save();
+    student.status = 'approved';
+    student.approvedAt = new Date().toISOString();
+    student.rejectionReason = undefined;
+    await student.save();
+
+    if (shouldSendEmail) {
+      void this.emailService.sendApprovalEmail({
+        email: student.email,
+        name: student.fullNameEnglish ?? student.email,
+        studentId: student.studentId,
+      });
     }
 
-    return this.generateStudentQrCode(student.studentId);
+    try {
+      return await this.generateStudentQrCode(student.studentId);
+    } catch (error) {
+      this.logger.error(
+        'QR generation/upload failed',
+        error instanceof Error ? error.message : String(error),
+      );
+
+      const approvedStudent = await this.studentModel
+        .findById(student._id)
+        .select('-password')
+        .exec();
+
+      return approvedStudent ?? student;
+    }
   }
 
   async rejectStudent(id: string, dto: RejectStudentDto): Promise<object> {
@@ -440,43 +469,58 @@ export class StudentsService {
       admissionNo: student.admissionNumber,
     };
 
-    let qrBuffer: Buffer;
-
     try {
-      qrBuffer = await QRCode.toBuffer(JSON.stringify(qrPayload), {
+      const qrCode = await QRCode.toDataURL(JSON.stringify(qrPayload), {
+        errorCorrectionLevel: 'M',
+        margin: 1,
+        width: 300,
+      });
+
+      const qrBuffer = await QRCode.toBuffer(JSON.stringify(qrPayload), {
         errorCorrectionLevel: 'M',
         margin: 1,
         type: 'png',
         width: 300,
       });
-    } catch {
-      throw new InternalServerErrorException('Failed to generate QR code');
-    }
 
-    const uploadedQr = await this.storageService.uploadQrImage({
-      body: qrBuffer,
-      originalName: `${student.studentId}.png`,
-      contentType: 'image/png',
-      scope: student.studentId,
-      metadata: {
-        studentId: student.studentId,
-      },
-    });
-
-    const updated = await this.studentModel
-      .findByIdAndUpdate(
-        student._id,
-        {
-          $set: {
-            qrCodeUrl: uploadedQr.publicUrl,
-            qrImageKey: uploadedQr.key,
-          },
+      const uploadedQr = await this.storageService.uploadQrImage({
+        body: qrBuffer,
+        originalName: `${student.studentId}.png`,
+        contentType: 'image/png',
+        scope: student.studentId,
+        metadata: {
+          studentId: student.studentId,
         },
-        { new: true },
-      )
-      .select('-password');
+      });
 
-    return updated ?? student;
+      const updated = await this.studentModel
+        .findByIdAndUpdate(
+          student._id,
+          {
+            $set: {
+              qrCode,
+              qrCodeUrl: uploadedQr.publicUrl,
+              qrImageKey: uploadedQr.key,
+            },
+          },
+          { returnDocument: 'after' },
+        )
+        .select('-password');
+
+      return updated ?? student;
+    } catch (error) {
+      this.logger.error(
+        `QR generation/upload failed for student ${studentId}`,
+        error instanceof Error ? error.message : String(error),
+      );
+
+      const fallback = await this.studentModel
+        .findOne({ studentId })
+        .select('-password')
+        .lean();
+
+      return (fallback ?? student) as unknown as Student;
+    }
   }
 
   private resolveDateOfBirth(personal: RegisterStudentDto['personal']): Date {
@@ -515,7 +559,10 @@ export class StudentsService {
     const counter = await this.counterModel.findOneAndUpdate(
       { name: 'studentId' },
       { $inc: { seq: 1 } },
-      { new: true, upsert: true },
+      {
+        returnDocument: 'after',
+        upsert: true,
+      },
     );
 
     const padded = String(counter.seq).padStart(3, '0');
@@ -530,7 +577,10 @@ export class StudentsService {
     const counter = await this.counterModel.findOneAndUpdate(
       { name: `${name}_${year}` },
       { $inc: { seq: 1 } },
-      { new: true, upsert: true },
+      {
+        returnDocument: 'after',
+        upsert: true,
+      },
     );
 
     if (!counter) {

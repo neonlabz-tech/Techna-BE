@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   Param,
   Query,
@@ -9,15 +10,18 @@ import {
   Request,
   ForbiddenException,
 } from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../decorators/roles.decorator';
 import { Role } from '../enums/role.enum';
 import { CreatePaymentDto } from './dto/create-payment.dto';
+import { UpdatePaymentDto } from './dto/update-payment.dto';
 import { PaymentTrackingQueryDto } from './dto/payment-tracking-query.dto';
 
 @Controller('payments')
+@ApiBearerAuth('access-token')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
@@ -64,6 +68,15 @@ export class PaymentsController {
   @Roles(Role.ADMIN)
   async create(@Body() body: CreatePaymentDto) {
     const payment = await this.paymentsService.create(body);
+
+    return { success: true, payment };
+  }
+
+  // ─── PATCH /api/payments/:id  (admin only) ──────────────────────────────────
+  @Patch(':id')
+  @Roles(Role.ADMIN)
+  async update(@Param('id') id: string, @Body() dto: UpdatePaymentDto) {
+    const payment = await this.paymentsService.update(id, dto);
 
     return { success: true, payment };
   }
