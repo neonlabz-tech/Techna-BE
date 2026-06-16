@@ -219,6 +219,42 @@ export class AuthService {
     return { message: 'Password reset successfully' };
   }
 
+  /**
+   * Change password for an authenticated student.
+   * Requires the current password to be correct before setting the new one.
+   */
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<{ message: string }> {
+    const student = await this.studentModel.findById(userId);
+
+    if (!student) {
+      throw new UnauthorizedException('Student not found');
+    }
+
+    // Verify the current password
+    const isMatch = await bcrypt.compare(currentPassword, student.password);
+    if (!isMatch) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    // Prevent setting the same password
+    const isSame = await bcrypt.compare(newPassword, student.password);
+    if (isSame) {
+      throw new BadRequestException(
+        'New password must be different from the current password',
+      );
+    }
+
+    // Hash and save the new password
+    student.password = await bcrypt.hash(newPassword, 10);
+    await student.save();
+
+    return { message: 'Password changed successfully' };
+  }
+
   async hashPassword(plain: string): Promise<string> {
     return bcrypt.hash(plain, 10);
   }
