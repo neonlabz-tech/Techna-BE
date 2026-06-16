@@ -41,6 +41,7 @@ export class AuthController {
 
   // ─── POST /auth/student/login  (student-specific login) ─────────────────────
   @Post('student/login')
+  @Public()
   @ApiBody({
     schema: {
       type: 'object',

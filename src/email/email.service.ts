@@ -133,16 +133,30 @@ export class EmailService {
       });
 
       if (result.error) {
-        this.logger.error(
-          `Failed to send "${email.subject}" email to ${email.to}: ${result.error.message}`,
-        );
+        this.logEmailFailure(email.subject, email.to, result.error.message);
       }
     } catch (error) {
-      this.logger.error(
-        `Failed to send "${email.subject}" email to ${email.to}`,
-        error instanceof Error ? error.stack : String(error),
+      this.logEmailFailure(
+        email.subject,
+        email.to,
+        error instanceof Error ? error.message : String(error),
       );
     }
+  }
+
+  private logEmailFailure(subject: string, to: string, message: string): void {
+    const isResendTestRecipientError = message.includes(
+      'You can only send testing emails to your own email address',
+    );
+
+    const logMessage = `Skipped "${subject}" email to ${to}: ${message}`;
+
+    if (isResendTestRecipientError) {
+      this.logger.warn(logMessage);
+      return;
+    }
+
+    this.logger.error(logMessage);
   }
 
   private escapeHtml(value: string): string {

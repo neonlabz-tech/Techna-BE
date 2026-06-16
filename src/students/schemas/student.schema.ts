@@ -217,6 +217,9 @@ qrCodeUrl?: string;
 
   @Prop({
   enum: [
+    'Sinhala',
+    'Tamil',
+    'Muslim',
     'Sri Lankan Tamil',
     'Sri Lankan Moor',
     'Indian Tamil',
