@@ -122,8 +122,8 @@ qrCodeUrl?: string;
   @Prop({ required: true })
   phone!: string; // kept for backward compatibility (maps to whatsappNo)
 
-  @Prop({ required: true })
-  batch!: string;
+  @Prop({ default: '' })
+  batch?: string;
 
   @Prop({ type: [String], default: [] })
   modules!: string[]; // kept for backward compatibility
@@ -286,6 +286,12 @@ qrCodeUrl?: string;
 
   @Prop()
   agreed?: boolean;
+
+  @Prop({ type: String })
+  resetToken?: string;
+
+  @Prop({ type: Date })
+  resetTokenExpiry?: Date;
 }
 
 export const StudentSchema = SchemaFactory.createForClass(Student);

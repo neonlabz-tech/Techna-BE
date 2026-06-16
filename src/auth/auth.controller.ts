@@ -114,4 +114,21 @@ export class AuthController {
   studentOnly() {
     return { message: 'Welcome, Student!' };
   }
+
+  // ─── POST /auth/forgot-password  (public) ────────────────────────────────────
+  @Post('forgot-password')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(@Body() body: { email: string }) {
+    await this.authService.forgotPassword(body.email);
+    return { message: 'If that email is registered, a reset code has been sent.' };
+  }
+
+  // ─── POST /auth/reset-password  (public) ─────────────────────────────────────
+  @Post('reset-password')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Body() body: { token: string; newPassword: string }) {
+    return this.authService.resetPassword(body.token, body.newPassword);
+  }
 }

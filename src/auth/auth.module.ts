@@ -8,9 +8,11 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { Student, StudentSchema } from '../students/schemas/student.schema';
 import { Teacher, TeacherSchema } from '../teachers/schemas/teacher.schema';
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
+    EmailModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
