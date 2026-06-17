@@ -134,6 +134,12 @@ export class Student {
   avatar?: string;
 
   @Prop()
+  profilePhoto?: string;
+
+  @Prop()
+  profilePhotoKey?: string;
+
+  @Prop()
   parentName?: string;
 
   @Prop()
