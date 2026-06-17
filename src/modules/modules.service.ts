@@ -10,11 +10,9 @@ import { CreateModuleDto } from './dto/create-module.dto';
 import { UpdateModuleDto } from './dto/update-module.dto';
 import { AddResourceUrlDto } from './dto/add-resource-url.dto';
 import {
-  BadRequestException,
   InternalServerErrorException,
   NotFoundException,
 } from '../common/exceptions';
-import { isDummyValue } from '../common/utils/dummy-value-checker';
 
 @Injectable()
 export class ModulesService {
@@ -33,9 +31,6 @@ export class ModulesService {
   });
 
   async create(createModuleDto: CreateModuleDto) {
-    if (isDummyValue(createModuleDto.name)) {
-      throw new BadRequestException('Dummy values are not allowed for module name');
-    }
     try {
       const newModule = new this.moduleModel(createModuleDto);
       return await newModule.save();
@@ -53,6 +48,27 @@ export class ModulesService {
     } catch (error: unknown) {
       throw new InternalServerErrorException(
         'Failed to fetch modules: ' +
+          (error instanceof Error ? error.message : 'Unknown error'),
+      );
+    }
+  }
+
+  async findPublished() {
+    try {
+      const modules = await this.moduleModel
+        .find({ status: 'active' })
+        .sort({ createdAt: -1 })
+        .lean();
+
+      return modules.map((module) => ({
+        ...module,
+        resources: (module.resources ?? []).filter(
+          (resource: any) => resource.isPublished === true,
+        ),
+      }));
+    } catch (error: unknown) {
+      throw new InternalServerErrorException(
+        'Failed to fetch published modules: ' +
           (error instanceof Error ? error.message : 'Unknown error'),
       );
     }
@@ -80,9 +96,6 @@ export class ModulesService {
   }
 
   async update(id: string, updateModuleDto: UpdateModuleDto) {
-    if (updateModuleDto.name && isDummyValue(updateModuleDto.name)) {
-      throw new BadRequestException('Dummy values are not allowed for module name');
-    }
     try {
       const updatedModule = await this.moduleModel.findByIdAndUpdate(
         id,
@@ -212,9 +225,6 @@ async uploadResource(
   }
 
   async addResourceUrl(moduleId: string, dto: AddResourceUrlDto) {
-    if (isDummyValue(dto.title)) {
-      throw new BadRequestException('Dummy values are not allowed for video title');
-    }
     const module = await this.moduleModel.findById(moduleId);
 
     if (!module) {
@@ -232,6 +242,7 @@ async uploadResource(
             fileType: dto.fileType ?? 'video',
             description: dto.description,
             uploadedAt: new Date(),
+            isPublished: dto.isPublished ?? false,
           },
         },
       },

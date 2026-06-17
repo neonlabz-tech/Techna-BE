@@ -6,38 +6,41 @@ export type PaymentDocument = HydratedDocument<Payment>;
 @Schema({ timestamps: true })
 export class Payment {
   @Prop({ required: true })
-  studentId: string;
+  studentId!: string;
+
+  @Prop()
+  studentCode?: string;
 
   @Prop({ required: true })
-  studentName: string;
+  studentName!: string;
 
   @Prop({ required: true })
-  moduleId: string;
+  moduleId!: string;
 
   @Prop({ required: true })
-  moduleName: string;
+  moduleName!: string;
 
   @Prop({ required: true, min: 0 })
-  amount: number;
+  amount!: number;
 
   @Prop({ required: true })
-  paidDate: string;
+  paidDate!: string;
 
   @Prop({ required: true, enum: ['cash', 'bank', 'online'] })
-  method: 'cash' | 'bank' | 'online';
+  method!: 'cash' | 'bank' | 'online';
 
   @Prop({
     required: true,
     enum: ['paid', 'pending', 'overdue'],
     default: 'paid',
   })
-  status: 'paid' | 'pending' | 'overdue';
+  status!: 'paid' | 'pending' | 'overdue';
 
   @Prop({ required: true, unique: true })
-  receiptNo: string;
+  receiptNo!: string;
 
   @Prop({ required: true })
-  batch: string;
+  batch!: string;
 
   @Prop()
   notes?: string;

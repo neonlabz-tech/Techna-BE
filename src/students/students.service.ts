@@ -277,9 +277,12 @@ export class StudentsService {
       : data.modules?.length
         ? data.modules
         : undefined;
+    const payloadBase = { ...data };
+    delete payloadBase.modules;
+    delete payloadBase.subjects;
 
     const payload = {
-      ...data,
+      ...payloadBase,
       ...(selectedSubjects
         ? {
             subjects: selectedSubjects,
