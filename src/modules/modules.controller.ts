@@ -26,7 +26,7 @@ import { Public } from '../auth/public.decorator';
 
 @Controller('modules')
 @ApiBearerAuth('access-token')
-@UseGuards(JwtAuthGuard, RolesGuard)
+//@UseGuards(JwtAuthGuard, RolesGuard)
 export class ModulesController {
   constructor(private readonly modulesService: ModulesService) {}
 
