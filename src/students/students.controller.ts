@@ -17,7 +17,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { plainToInstance } from 'class-transformer';
-import { validate } from 'class-validator';
+import { validate, ValidationError } from 'class-validator';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -37,6 +37,25 @@ interface AuthenticatedRequest {
     userId: string;
   };
 }
+
+const flattenValidationErrors = (
+  errors: ValidationError[],
+  parentPath = '',
+): Array<{ field: string; message: string }> =>
+  errors.flatMap((error) => {
+    const field = parentPath
+      ? `${parentPath}.${error.property}`
+      : error.property;
+    const messages = Object.values(error.constraints ?? {}).map((message) => ({
+      field,
+      message,
+    }));
+    const childMessages = error.children?.length
+      ? flattenValidationErrors(error.children, field)
+      : [];
+
+    return [...messages, ...childMessages];
+  });
 
 @Controller('students')
 export class StudentsController {
@@ -67,7 +86,10 @@ export class StudentsController {
     });
 
     if (validationErrors.length > 0) {
-      throw new BadRequestException(validationErrors);
+      throw new BadRequestException({
+        message: 'Registration validation failed',
+        details: flattenValidationErrors(validationErrors),
+      });
     }
 
     return this.studentsService.registerStudent(dto, profilePhoto);
@@ -165,8 +187,16 @@ export class StudentsController {
     },
   })
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
-  update(@Param('id') id: string, @Body() body: UpdateStudentPayload) {
+  @Roles(Role.ADMIN, Role.STUDENT)
+  update(
+    @Param('id') id: string,
+    @Body() body: UpdateStudentPayload,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    if (req.user.role === Role.STUDENT && req.user.userId !== id) {
+      throw new ForbiddenException('You can only update your own profile');
+    }
+
     return this.studentsService.update(id, body);
   }
 

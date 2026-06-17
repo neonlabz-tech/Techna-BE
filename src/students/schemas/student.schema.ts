@@ -3,23 +3,21 @@ import { HydratedDocument } from 'mongoose';
 
 export type StudentDocument = HydratedDocument<Student>;
 
-// ── O/L grade enum ────────────────────────────────────────────────────────────
 export enum OlGrade {
-  A_PLUS  = 'A+',
-  A       = 'A',
+  A_PLUS = 'A+',
+  A = 'A',
   A_MINUS = 'A-',
-  B_PLUS  = 'B+',
-  B       = 'B',
+  B_PLUS = 'B+',
+  B = 'B',
   B_MINUS = 'B-',
-  C_PLUS  = 'C+',
-  C       = 'C',
+  C_PLUS = 'C+',
+  C = 'C',
   C_MINUS = 'C-',
-  S       = 'S',
-  F       = 'F',
-  AB      = 'AB', // Absent
+  S = 'S',
+  F = 'F',
+  AB = 'AB',
 }
 
-// ── O/L result row — embedded subdocument ─────────────────────────────────────
 @Schema({ _id: false })
 export class OlResultRow {
   @Prop({ required: true })
@@ -42,60 +40,52 @@ export class OlResultRow {
 
   @Prop({ type: String, default: null })
   tamil?: string;
-
-  
 }
 
 export const OlResultRowSchema = SchemaFactory.createForClass(OlResultRow);
 
-// ── A/L subject enum ──────────────────────────────────────────────────────────
 export enum AlSubject {
   ENGINEERING_TECHNOLOGY = 'Engineering Technology',
   BIO_SYSTEMS_TECHNOLOGY = 'Bio Systems Technology',
   SCIENCE_FOR_TECHNOLOGY = 'Science For Technology',
-  ICT                    = 'Information Communication Technology',
-  AGRICULTURAL_SCIENCE   = 'Agricultural Science',
-  MATHEMATICS            = 'Mathematics',
-  GEOGRAPHY              = 'Geography',
+  ICT = 'Information Communication Technology',
+  AGRICULTURAL_SCIENCE = 'Agricultural Science',
+  MATHEMATICS = 'Mathematics',
+  GEOGRAPHY = 'Geography',
 }
 
-// ── District enum ─────────────────────────────────────────────────────────────
 export enum District {
-  COLOMBO       = 'Colombo',
-  GAMPAHA       = 'Gampaha',
-  KALUTARA      = 'Kalutara',
-  KANDY         = 'Kandy',
-  MATALE        = 'Matale',
-  NUWARA_ELIYA  = 'Nuwara Eliya',
-  GALLE         = 'Galle',
-  MATARA        = 'Matara',
-  HAMBANTOTA    = 'Hambantota',
-  JAFFNA        = 'Jaffna',
-  KILINOCHCHI   = 'Kilinochchi',
-  MANNAR        = 'Mannar',
-  MULLAITIVU    = 'Mullaitivu',
-  VAVUNIYA      = 'Vavuniya',
-  PUTTALAM      = 'Puttalam',
-  KURUNEGALA    = 'Kurunegala',
-  ANURADHAPURA  = 'Anuradhapura',
-  POLONNARUWA   = 'Polonnaruwa',
-  BADULLA       = 'Badulla',
-  MONARAGALA    = 'Monaragala',
-  RATNAPURA     = 'Ratnapura',
-  KEGALLE       = 'Kegalle',
-  AMPARA        = 'Ampara',
-  BATTICALOA    = 'Batticaloa',
-  TRINCOMALEE   = 'Trincomalee',
+  COLOMBO = 'Colombo',
+  GAMPAHA = 'Gampaha',
+  KALUTARA = 'Kalutara',
+  KANDY = 'Kandy',
+  MATALE = 'Matale',
+  NUWARA_ELIYA = 'Nuwara Eliya',
+  GALLE = 'Galle',
+  MATARA = 'Matara',
+  HAMBANTOTA = 'Hambantota',
+  JAFFNA = 'Jaffna',
+  KILINOCHCHI = 'Kilinochchi',
+  MANNAR = 'Mannar',
+  MULLAITIVU = 'Mullaitivu',
+  VAVUNIYA = 'Vavuniya',
+  PUTTALAM = 'Puttalam',
+  KURUNEGALA = 'Kurunegala',
+  ANURADHAPURA = 'Anuradhapura',
+  POLONNARUWA = 'Polonnaruwa',
+  BADULLA = 'Badulla',
+  MONARAGALA = 'Monaragala',
+  RATNAPURA = 'Ratnapura',
+  KEGALLE = 'Kegalle',
+  AMPARA = 'Ampara',
+  BATTICALOA = 'Batticaloa',
+  TRINCOMALEE = 'Trincomalee',
 }
 
-// ── Main Student schema ───────────────────────────────────────────────────────
 @Schema({ timestamps: true })
 export class Student {
-
-  // ── EXISTING: System / identity fields ─────────────────────────────────────
-
   @Prop({ required: true, unique: true })
-  studentId!: string; // e.g. STU001 (sequential counter)
+  studentId!: string;
 
   @Prop({ required: true, unique: true })
   qrToken!: string;
@@ -103,32 +93,26 @@ export class Student {
   @Prop()
   qrCode?: string;
 
-    @Prop()
-qrImageKey?: string;
+  @Prop()
+  qrImageKey?: string;
 
-@Prop()
-qrCodeUrl?: string;
-
-
-
-  // ── EXISTING: Core account fields ──────────────────────────────────────────
+  @Prop()
+  qrCodeUrl?: string;
 
   @Prop({ required: true, lowercase: true, trim: true })
   email!: string;
 
   @Prop({ required: true })
-  password!: string; // stored hashed
+  password!: string;
 
   @Prop({ required: true })
-  phone!: string; // kept for backward compatibility (maps to whatsappNo)
+  phone!: string;
 
   @Prop({ default: '' })
   batch?: string;
 
   @Prop({ type: [String], default: [] })
-  modules!: string[]; // kept for backward compatibility
-
-  // ── EXISTING: Status & approval ────────────────────────────────────────────
+  modules!: string[];
 
   @Prop({
     required: true,
@@ -146,8 +130,6 @@ qrCodeUrl?: string;
   @Prop()
   rejectionReason?: string;
 
-  // ── EXISTING: Optional profile basics ──────────────────────────────────────
-
   @Prop()
   avatar?: string;
 
@@ -163,39 +145,29 @@ qrCodeUrl?: string;
   @Prop()
   parentPhone?: string;
 
-  // ── EXISTING: Made optional (relaxed from required) ────────────────────────
-
   @Prop()
   address?: string;
 
   @Prop()
   dob?: string;
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // NEW: Auto-generated admission references
-  // ══════════════════════════════════════════════════════════════════════════
+  @Prop({ unique: true, sparse: true })
+  admissionNumber?: string;
 
   @Prop({ unique: true, sparse: true })
-  admissionNumber?: string; // e.g. ADM-2024-0001
+  serialNumber?: string;
 
   @Prop({ unique: true, sparse: true })
-  serialNumber?: string; // e.g. SN-2024-0001
-
-  @Prop({ unique: true, sparse: true })
-  applicationReference?: string; // e.g. APP-2024-0001
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // NEW: Section B — Full personal details
-  // ══════════════════════════════════════════════════════════════════════════
+  applicationReference?: string;
 
   @Prop()
   fullNameTamil?: string;
 
   @Prop({ uppercase: true })
-  fullNameEnglish?: string; // required when using the full admission form
+  fullNameEnglish?: string;
 
   @Prop()
-  dateOfBirth?: Date; // computed from dobDay/dobMonth/dobYear or sent directly
+  dateOfBirth?: Date;
 
   @Prop({ unique: true, sparse: true })
   nicNo?: string;
@@ -236,10 +208,6 @@ qrCodeUrl?: string;
   @Prop()
   postalCode?: string;
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // NEW: Section C — Parent / Guardian details
-  // ══════════════════════════════════════════════════════════════════════════
-
   @Prop({ uppercase: true })
   fatherName?: string;
 
@@ -261,10 +229,6 @@ qrCodeUrl?: string;
   @Prop()
   guardianMobile?: string;
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // NEW: Section D — O/L academic records
-  // ══════════════════════════════════════════════════════════════════════════
-
   @Prop({ type: String, default: 'Local O/L' })
   olCategory?: string;
 
@@ -282,10 +246,6 @@ qrCodeUrl?: string;
 
   @Prop({ type: [OlResultRowSchema], default: [] })
   olResults?: OlResultRow[];
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // NEW: Section E — A/L subject selection
-  // ══════════════════════════════════════════════════════════════════════════
 
   @Prop({ type: [String], default: [] })
   subjects?: string[];
