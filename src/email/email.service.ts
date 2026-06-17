@@ -375,6 +375,8 @@ export class EmailService {
 
     await this.sendStudentEmail({
       to: payload.adminEmail,
+      from: `${payload.name} <${payload.email}>`,
+      replyTo: payload.email,
       subject: `New Inquiry: ${payload.subject} — ${payload.name}`,
       text,
       html,
@@ -386,6 +388,8 @@ export class EmailService {
     subject: string;
     text: string;
     html: string;
+    from?: string;
+    replyTo?: string;
   }): Promise<void> {
     if (!email.to?.trim()) {
       this.logger.error(
@@ -404,11 +408,12 @@ export class EmailService {
 
     try {
       const result = await this.transporter.sendMail({
-        from: this.fromEmail,
+        from: email.from || this.fromEmail,
         to: email.to,
         subject: email.subject,
         text: email.text,
         html: email.html,
+        ...(email.replyTo && { replyTo: email.replyTo }),
       });
 
       this.logger.log(
