@@ -22,6 +22,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../decorators/roles.decorator';
 import { Role } from '../enums/role.enum';
+import { Public } from '../auth/public.decorator';
 
 @Controller('modules')
 @ApiBearerAuth('access-token')
@@ -39,6 +40,12 @@ export class ModulesController {
   @Roles(Role.ADMIN, Role.TEACHER, Role.STUDENT)
   findAll() {
     return this.modulesService.findAll();
+  }
+
+  @Get('public')
+  @Public()
+  findPublished() {
+    return this.modulesService.findPublished();
   }
 
   @Get(':id')
