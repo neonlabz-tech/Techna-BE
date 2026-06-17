@@ -165,8 +165,16 @@ export class StudentsController {
     },
   })
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
-  update(@Param('id') id: string, @Body() body: UpdateStudentPayload) {
+  @Roles(Role.ADMIN, Role.STUDENT)
+  update(
+    @Param('id') id: string,
+    @Body() body: UpdateStudentPayload,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    if (req.user.role === Role.STUDENT && req.user.userId !== id) {
+      throw new ForbiddenException('You can only update your own profile');
+    }
+
     return this.studentsService.update(id, body);
   }
 
