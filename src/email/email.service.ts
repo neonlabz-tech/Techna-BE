@@ -226,11 +226,170 @@ export class EmailService {
     });
   }
 
+  async sendContactEmail(payload: {
+    adminEmail: string;
+    name: string;
+    email: string;
+    phone: string;
+    subject: string;
+    message: string;
+  }): Promise<void> {
+    const currentYear = new Date().getFullYear();
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin:0;padding:0;background-color:#f0f4f8;font-family:'Segoe UI',Roboto,Arial,sans-serif;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f0f4f8;padding:40px 20px;">
+          <tr>
+            <td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+
+                <!-- Header -->
+                <tr>
+                  <td style="background:#172554;padding:32px 40px;text-align:center;">
+                    <h1 style="margin:0;font-size:28px;font-weight:800;color:#ffffff;letter-spacing:1px;">TECHNA</h1>
+                    <p style="margin:6px 0 0;font-size:12px;color:#94a3b8;text-transform:uppercase;letter-spacing:2px;">Technical Institute · Jaffna</p>
+                  </td>
+                </tr>
+
+                <!-- Subject Banner -->
+                <tr>
+                  <td style="background:#0AB5CC;padding:16px 40px;">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="color:#ffffff;font-size:15px;font-weight:600;">
+                          📩 New Contact Inquiry
+                        </td>
+                        <td align="right" style="color:#e0f7fa;font-size:12px;">
+                          ${new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Body Content -->
+                <tr>
+                  <td style="padding:32px 40px;">
+
+                    <!-- Sender Info Card -->
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin-bottom:24px;">
+                      <tr>
+                        <td style="background:#172554;padding:10px 16px;color:#ffffff;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">
+                          Sender Information
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding:0;">
+                          <table width="100%" cellpadding="0" cellspacing="0">
+                            <tr>
+                              <td style="padding:14px 16px;border-bottom:1px solid #e2e8f0;width:110px;font-size:12px;color:#64748b;font-weight:600;text-transform:uppercase;">Name</td>
+                              <td style="padding:14px 16px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#1e293b;font-weight:600;">${this.escapeHtml(this.toTitleCase(payload.name))}</td>
+                            </tr>
+                            <tr>
+                              <td style="padding:14px 16px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;font-weight:600;text-transform:uppercase;">Email</td>
+                              <td style="padding:14px 16px;border-bottom:1px solid #e2e8f0;font-size:14px;">
+                                <a href="mailto:${this.escapeHtml(payload.email)}" style="color:#0AB5CC;text-decoration:none;font-weight:500;">${this.escapeHtml(payload.email)}</a>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style="padding:14px 16px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;font-weight:600;text-transform:uppercase;">Phone</td>
+                              <td style="padding:14px 16px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#1e293b;">${this.escapeHtml(payload.phone)}</td>
+                            </tr>
+                            <tr>
+                              <td style="padding:14px 16px;font-size:12px;color:#64748b;font-weight:600;text-transform:uppercase;">Subject</td>
+                              <td style="padding:14px 16px;font-size:14px;color:#172554;font-weight:700;">${this.escapeHtml(payload.subject)}</td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Message Section -->
+                    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+                      <tr>
+                        <td style="padding-bottom:10px;font-size:12px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:1px;">
+                          Message
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="background:#ffffff;border:1px solid #e2e8f0;border-left:4px solid #0AB5CC;border-radius:6px;padding:20px;font-size:14px;line-height:1.8;color:#334155;white-space:pre-wrap;">${this.escapeHtml(payload.message)}</td>
+                      </tr>
+                    </table>
+
+                    <!-- Reply Button -->
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td align="center">
+                          <a href="mailto:${this.escapeHtml(payload.email)}?subject=Re: ${encodeURIComponent(payload.subject)}"
+                             style="display:inline-block;background:#0AB5CC;color:#ffffff;padding:14px 36px;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none;letter-spacing:0.3px;">
+                            ↩ Reply to ${this.escapeHtml(this.toTitleCase(payload.name))}
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+
+                  </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                  <td style="background:#172554;padding:24px 40px;text-align:center;">
+                    <p style="margin:0;color:#94a3b8;font-size:12px;">Techna Technical Institute</p>
+                    <p style="margin:4px 0 0;color:#64748b;font-size:11px;">No. 42, Main Street, Jaffna, Sri Lanka · 021-222-3456</p>
+                    <p style="margin:8px 0 0;color:#475569;font-size:10px;">© ${currentYear} Techna. All rights reserved.</p>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const text = [
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+      `TECHNA - New Contact Inquiry`,
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+      ``,
+      `From: ${payload.name}`,
+      `Email: ${payload.email}`,
+      `Phone: ${payload.phone}`,
+      `Subject: ${payload.subject}`,
+      ``,
+      `Message:`,
+      `─────────`,
+      payload.message,
+      ``,
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+      `Techna Technical Institute`,
+      `No. 42, Main Street, Jaffna, Sri Lanka`,
+    ].join('\n');
+
+    await this.sendStudentEmail({
+      to: payload.adminEmail,
+      from: `${payload.name} <${payload.email}>`,
+      replyTo: payload.email,
+      subject: `New Inquiry: ${payload.subject} — ${payload.name}`,
+      text,
+      html,
+    });
+  }
+
   private async sendStudentEmail(email: {
     to: string;
     subject: string;
     text: string;
     html: string;
+    from?: string;
+    replyTo?: string;
   }): Promise<void> {
     if (!email.to?.trim()) {
       this.logger.error(
@@ -249,11 +408,12 @@ export class EmailService {
 
     try {
       const result = await this.transporter.sendMail({
-        from: this.fromEmail,
+        from: email.from || this.fromEmail,
         to: email.to,
         subject: email.subject,
         text: email.text,
         html: email.html,
+        ...(email.replyTo && { replyTo: email.replyTo }),
       });
 
       this.logger.log(

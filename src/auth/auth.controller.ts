@@ -16,6 +16,7 @@ import { RolesGuard } from './roles.guard';
 import { Roles } from '../decorators/roles.decorator';
 import { Role } from '../enums/role.enum';
 import { Public } from './public.decorator';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -114,6 +115,24 @@ export class AuthController {
   @Roles(Role.ADMIN, Role.STUDENT)
   studentOnly() {
     return { message: 'Welcome, Student!' };
+  }
+
+  // ─── POST /auth/change-password  (authenticated student) ───────────────────
+  @Post('change-password')
+  @ApiBearerAuth('access-token')
+  @ApiUnauthorizedResponse({ description: 'Missing, invalid, or expired JWT' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.STUDENT)
+  @HttpCode(HttpStatus.OK)
+  async changePassword(
+    @Request() req: any,
+    @Body() body: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(
+      req.user.userId,
+      body.currentPassword,
+      body.newPassword,
+    );
   }
 
   // ─── POST /auth/forgot-password  (public) ────────────────────────────────────
