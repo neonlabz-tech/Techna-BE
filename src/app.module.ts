@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_INTERCEPTOR } from '@nestjs/core';      // ← removed APP_GUARD import
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 
@@ -18,7 +18,6 @@ import { StudentsModule } from './students/students.module';
 import { TeachersModule } from './teachers/teachers.module';
 import { AuthModule } from './auth/auth.module';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
-// ← removed JwtAuthGuard and RolesGuard imports (no longer needed here)
 
 @Module({
   imports: [
@@ -51,8 +50,6 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
   providers: [
     AppService,
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
-    // ← REMOVED: { provide: APP_GUARD, useClass: JwtAuthGuard },
-    // ← REMOVED: { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
 export class AppModule {}
