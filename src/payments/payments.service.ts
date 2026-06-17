@@ -22,7 +22,30 @@ export class PaymentsService {
   ) {}
 
   async findAll() {
-    return this.paymentModel.find().sort({ paidDate: -1, createdAt: -1 }).lean();
+    const list: any[] = await this.paymentModel
+      .find()
+      .sort({ paidDate: -1, createdAt: -1 })
+      .lean();
+
+    // Back-fill studentCode for legacy records that predate this field
+    const missing = list.filter(p => !p.studentCode);
+    if (missing.length > 0) {
+      const ids = [...new Set(missing.map(p => p.studentId as string))];
+      const orConditions = ids.flatMap(id => {
+        const cond: any[] = [{ studentId: id }];
+        if (Types.ObjectId.isValid(id)) cond.push({ _id: new Types.ObjectId(id) });
+        return cond;
+      });
+      const students: any[] = await this.studentModel
+        .find({ $or: orConditions })
+        .select('_id studentId')
+        .lean();
+      const codeMap = new Map<string, string>();
+      students.forEach(s => codeMap.set(s._id.toString(), s.studentId));
+      missing.forEach(p => { p.studentCode = codeMap.get(p.studentId) ?? ''; });
+    }
+
+    return list;
   }
 
   async findByStudent(studentId: string) {
@@ -46,6 +69,7 @@ export class PaymentsService {
 
     const payment = await this.paymentModel.create({
       studentId: data.studentId,
+      studentCode: student.studentId,
       studentName: data.studentName?.trim() || student.name,
       moduleId: data.moduleId,
       moduleName: data.moduleName?.trim() || module.name,
@@ -114,10 +138,12 @@ export class PaymentsService {
   }
 
   private async resolveStudent(studentId: string) {
+    const conditions: object[] = [{ studentId }];
+    if (Types.ObjectId.isValid(studentId)) {
+      conditions.unshift({ _id: studentId });
+    }
     const student = await this.studentModel
-      .findOne({
-        $or: [{ _id: studentId }, { studentId }],
-      })
+      .findOne({ $or: conditions })
       .lean();
 
     if (!student) {
@@ -171,9 +197,11 @@ export class PaymentsService {
 
   private async generateUniqueReceiptNo() {
     for (let attempt = 0; attempt < 5; attempt += 1) {
-      const receiptNo = `REC-${Date.now()}-${Math.floor(Math.random() * 10000)
-        .toString()
-        .padStart(4, '0')}`;
+      const now = new Date();
+      const datePart = now.toISOString().slice(0, 10).replace(/-/g, '');
+      const timePart = now.toTimeString().slice(0, 8).replace(/:/g, '');
+      const randPart = Math.floor(Math.random() * 900 + 100).toString();
+      const receiptNo = `RCP-${datePart}-${timePart}-${randPart}`;
       const existing = await this.paymentModel.findOne({ receiptNo }).lean();
 
       if (!existing) {
@@ -257,6 +285,7 @@ export class PaymentsService {
     return {
       id: payment._id?.toString?.() ?? payment._id,
       studentId: payment.studentId,
+      studentCode: payment.studentCode,
       studentName: payment.studentName,
       moduleId: payment.moduleId,
       moduleName: payment.moduleName,

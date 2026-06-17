@@ -4,9 +4,9 @@ import {
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
-
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcryptjs';
 import { Model, Types } from 'mongoose';
@@ -14,6 +14,7 @@ import { randomUUID } from 'node:crypto';
 import * as QRCode from 'qrcode';
 
 import { EmailService } from '../email/email.service';
+import { StorageService } from '../storage/storage.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { EnrolmentHistoryDto } from './dto/enrolment-history.dto';
 import { RegisterStudentDto } from './dto/register-student.dto';
@@ -33,6 +34,8 @@ export type UpdateStudentPayload = Partial<CreateStudentPayload>;
 
 @Injectable()
 export class StudentsService {
+  private readonly logger = new Logger(StudentsService.name);
+
   constructor(
     @InjectModel(Student.name)
     private readonly studentModel: Model<StudentDocument>,
@@ -41,19 +44,14 @@ export class StudentsService {
     private readonly counterModel: Model<CounterDocument>,
 
     private readonly emailService: EmailService,
+    private readonly storageService: StorageService,
   ) {}
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // FIND ALL  (Admin: see all students with optional status filter)
-  // ─────────────────────────────────────────────────────────────────────────
   async findAll(status?: 'pending' | 'approved' | 'rejected') {
     const filter = status ? { status } : {};
     return this.studentModel.find(filter).select('-password').lean();
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // FIND ONE  (Admin or own student)
-  // ─────────────────────────────────────────────────────────────────────────
   async findOne(id: string) {
     const student = await this.studentModel
       .findById(id)
@@ -65,10 +63,10 @@ export class StudentsService {
     return student;
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // PUBLIC REGISTRATION  (POST /students/register — no auth required)
-  // ─────────────────────────────────────────────────────────────────────────
-  async registerStudent(dto: RegisterStudentDto) {
+  async registerStudent(
+    dto: RegisterStudentDto,
+    profilePhoto?: Express.Multer.File,
+  ) {
     if (!dto.subjectSelection.agreed) {
       throw new BadRequestException(
         'You must agree to the terms before submitting the registration',
@@ -76,7 +74,6 @@ export class StudentsService {
     }
 
     const dateOfBirth = this.resolveDateOfBirth(dto.personal);
-
     const email = dto.account.email.trim().toLowerCase();
 
     const existingEmail = await this.studentModel.findOne({ email }).lean();
@@ -90,6 +87,7 @@ export class StudentsService {
       const existingNic = await this.studentModel
         .findOne({ nicNo: dto.personal.nicNo.trim() })
         .lean();
+
       if (existingNic) {
         throw new ConflictException(
           'An application with this NIC number already exists',
@@ -98,6 +96,7 @@ export class StudentsService {
     }
 
     const year = new Date().getFullYear();
+
     const [
       studentId,
       admissionNumber,
@@ -110,12 +109,24 @@ export class StudentsService {
       this.generateReference('applicationReference', 'APP', year),
     ]);
 
-    const qrToken = randomUUID();
-    const hashedPassword = await bcrypt.hash(dto.account.password, 10);
+    const selectedSubjects = dto.subjectSelection.subjects ?? [];
+    const uploadedProfilePhoto = profilePhoto
+      ? await this.storageService.uploadProfilePhoto({
+          body: profilePhoto.buffer,
+          originalName: profilePhoto.originalname,
+          contentType: profilePhoto.mimetype,
+          scope: studentId,
+          metadata: {
+            studentId,
+            email,
+          },
+        })
+      : null;
+    const profilePhotoUrl = uploadedProfilePhoto?.publicUrl ?? undefined;
 
     const payload = {
       studentId,
-      qrToken,
+      qrToken: randomUUID(),
       status: 'pending' as const,
       enrolledAt: new Date().toISOString(),
 
@@ -124,70 +135,87 @@ export class StudentsService {
       applicationReference,
 
       email,
-      password: hashedPassword,
+      password: await bcrypt.hash(dto.account.password, 10),
 
-      fullNameTamil:          dto.personal.fullNameTamil?.trim(),
-      fullNameEnglish:        dto.personal.fullNameEnglish.trim().toUpperCase(),
+      name: dto.personal.fullNameEnglish?.trim().toUpperCase(),
+      fullNameTamil: dto.personal.fullNameTamil?.trim(),
+      fullNameEnglish: dto.personal.fullNameEnglish?.trim().toUpperCase(),
       dateOfBirth,
-      nicNo:                  dto.personal.nicNo.trim(),
-      school:                 dto.personal.school?.trim(),
-      whatsappNo:             dto.personal.whatsappNo.trim(),
-      phone:                  dto.personal.whatsappNo.trim(),
-      parentsNo:              dto.personal.parentsNo?.trim(),
-      permanentAddress:       dto.personal.permanentAddress.trim(),
+      dob: dateOfBirth.toISOString(),
+
+      nicNo: dto.personal.nicNo?.trim(),
+      school: dto.personal.school?.trim(),
+
+      whatsappNo: dto.personal.whatsappNo?.trim(),
+      phone: dto.personal.whatsappNo?.trim(),
+
+      parentsNo: dto.personal.parentsNo?.trim(),
+
+      permanentAddress: dto.personal.permanentAddress?.trim(),
+      address: dto.personal.permanentAddress?.trim(),
+
       administrativeDistrict: dto.personal.administrativeDistrict,
-      fixedTelephone:         dto.personal.fixedTelephone?.trim(),
-      residingSince:          dto.personal.residingSince?.trim(),
-      race:                   dto.personal.race,
-      religion:               dto.personal.religion,
-      citizenByDescent:       dto.personal.citizenByDescent ?? 'YES',
-      contactAddress:         dto.personal.contactAddress?.trim(),
-      postalCode:             dto.personal.postalCode?.trim(),
+      fixedTelephone: dto.personal.fixedTelephone?.trim(),
+      residingSince: dto.personal.residingSince?.trim(),
+      race: dto.personal.race,
+      religion: dto.personal.religion,
+      citizenByDescent: dto.personal.citizenByDescent ?? 'YES',
+      contactAddress: dto.personal.contactAddress?.trim(),
+      postalCode: dto.personal.postalCode?.trim(),
 
-      fatherName:       dto.parent?.fatherName?.trim().toUpperCase(),
-      motherName:       dto.parent?.motherName?.trim().toUpperCase(),
-      guardianName:     dto.parent?.guardianName?.trim().toUpperCase(),
-      contactPerson:    dto.parent?.contactPerson ?? 'Mother',
-      guardianAddress:  dto.parent?.guardianAddress?.trim(),
+      fatherName: dto.parent?.fatherName?.trim().toUpperCase(),
+      motherName: dto.parent?.motherName?.trim().toUpperCase(),
+      guardianName: dto.parent?.guardianName?.trim().toUpperCase(),
+      contactPerson: dto.parent?.contactPerson ?? 'Mother',
+      guardianAddress: dto.parent?.guardianAddress?.trim(),
       guardianFixedTel: dto.parent?.guardianFixedTel?.trim(),
-      guardianMobile:   dto.parent?.guardianMobile?.trim(),
+      guardianMobile: dto.parent?.guardianMobile?.trim(),
 
-      olCategory:    dto.olRecords?.olCategory   ?? 'Local O/L',
-      olYear:        dto.olRecords?.olYear?.trim(),
+      parentName:
+        dto.parent?.motherName?.trim().toUpperCase() ||
+        dto.parent?.fatherName?.trim().toUpperCase() ||
+        dto.parent?.guardianName?.trim().toUpperCase(),
+
+      parentPhone:
+        dto.personal.parentsNo?.trim() || dto.parent?.guardianMobile?.trim(),
+
+      olCategory: dto.olRecords?.olCategory ?? 'Local O/L',
+      olYear: dto.olRecords?.olYear?.trim(),
       olIndexNumber: dto.olRecords?.olIndexNumber?.trim(),
-      olNameUsed:    dto.olRecords?.olNameUsed?.trim().toUpperCase(),
-      olAccept:      dto.olRecords?.olAccept      ?? 'Accept',
-      olResults:     dto.olRecords?.olResults     ?? [],
+      olNameUsed: dto.olRecords?.olNameUsed?.trim().toUpperCase(),
+      olAccept: dto.olRecords?.olAccept ?? 'Accept',
+      olResults: dto.olRecords?.olResults ?? [],
 
-      subjects: dto.subjectSelection.subjects,
-      agreed:   dto.subjectSelection.agreed,
+      subjects: selectedSubjects,
+      modules: selectedSubjects,
+      agreed: dto.subjectSelection.agreed,
 
-      batch:   dto.batch?.trim() ?? 'N/A',
-      modules: dto.subjectSelection.subjects,
+      batch: dto.batch?.trim() || '',
+
+      ...(uploadedProfilePhoto
+        ? {
+            profilePhoto: profilePhotoUrl,
+            avatar: profilePhotoUrl,
+            profilePhotoKey: uploadedProfilePhoto.key,
+          }
+        : {}),
     };
 
     try {
       const student = await this.studentModel.create(payload);
 
       void this.emailService.sendRegistrationEmail({
-        email:     student.email,
-        name:      student.fullNameEnglish ?? student.email,
+        email: student.email,
+        name: student.fullNameEnglish ?? student.email,
         studentId: student.studentId,
       });
 
+      const result = student.toObject() as { password?: string };
+      delete result.password;
+
       return {
         message: 'Registration submitted successfully. Awaiting admin approval.',
-        data: {
-          _id:                  student._id,
-          studentId:            student.studentId,
-          admissionNumber:      student.admissionNumber,
-          serialNumber:         student.serialNumber,
-          applicationReference: student.applicationReference,
-          fullNameEnglish:      student.fullNameEnglish,
-          email:                student.email,
-          status:               student.status,
-          enrolledAt:           student.enrolledAt,
-        },
+        data: result,
       };
     } catch (error) {
       if (this.isDuplicateKeyError(error)) {
@@ -199,33 +227,55 @@ export class StudentsService {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // ADMIN CREATE  (POST /students — Admin only, full payload)
-  // ─────────────────────────────────────────────────────────────────────────
   async create(data: CreateStudentPayload) {
     this.validateRegistration(data);
 
+    const selectedSubjects = data.subjects?.length
+      ? data.subjects
+      : data.modules?.length
+        ? data.modules
+        : [];
+
     const payload: CreateStudentPayload = {
       ...data,
-      email:     data.email.trim().toLowerCase(),
-      modules:   data.modules ?? [],
+      email: data.email.trim().toLowerCase(),
+      phone: data.whatsappNo?.trim() || data.phone?.trim() || '',
+      whatsappNo: data.whatsappNo?.trim() || data.phone?.trim() || '',
+      parentsNo: data.parentsNo?.trim() || data.parentPhone?.trim(),
+      batch: data.batch.trim(),
+      name: data.fullNameEnglish?.trim() || data.name?.trim() || data.email,
+      fullNameEnglish:
+        data.fullNameEnglish?.trim().toUpperCase() ||
+        data.name?.trim().toUpperCase() ||
+        data.email,
+      address: data.permanentAddress?.trim() || data.address?.trim(),
+      permanentAddress: data.permanentAddress?.trim() || data.address?.trim(),
+      dateOfBirth: data.dateOfBirth,
+      parentName:
+        data.motherName?.trim() ||
+        data.fatherName?.trim() ||
+        data.guardianName?.trim() ||
+        data.parentName?.trim(),
+      parentPhone:
+        data.parentsNo?.trim() ||
+        data.guardianMobile?.trim() ||
+        data.parentPhone?.trim(),
+      modules: selectedSubjects,
+      subjects: selectedSubjects,
       studentId: data.studentId?.trim() || (await this.generateStudentId()),
-      qrToken:   data.qrToken?.trim()   || randomUUID(),
-      status:    data.status             ?? 'pending',
-      enrolledAt: data.enrolledAt        ?? new Date().toISOString(),
+      qrToken: data.qrToken?.trim() || randomUUID(),
+      status: data.status ?? 'pending',
+      enrolledAt: data.enrolledAt ?? new Date().toISOString(),
     };
 
-    if (payload.password) {
-      payload.password = await bcrypt.hash(payload.password, 10);
-    }
+    payload.password = await bcrypt.hash(payload.password || 'Student@123', 10);
 
     try {
       const student = await this.studentModel.create(payload);
 
-      // FIX: was student.name — field does not exist on schema
       void this.emailService.sendRegistrationEmail({
-        email:     student.email,
-        name:      student.fullNameEnglish ?? student.email,
+        email: student.email,
+        name: student.fullNameEnglish ?? student.email,
         studentId: student.studentId,
       });
 
@@ -241,16 +291,32 @@ export class StudentsService {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // UPDATE  (Admin only)
-  // ─────────────────────────────────────────────────────────────────────────
   async update(id: string, data: UpdateStudentPayload) {
     if (data.password) {
       data.password = await bcrypt.hash(data.password, 10);
     }
 
+    const selectedSubjects = data.subjects?.length
+      ? data.subjects
+      : data.modules?.length
+        ? data.modules
+        : undefined;
+
+    const payload = {
+      ...data,
+      ...(selectedSubjects
+        ? {
+            subjects: selectedSubjects,
+            modules: selectedSubjects,
+          }
+        : {}),
+    };
+
     const student = await this.studentModel
-      .findByIdAndUpdate(id, data, { new: true, runValidators: true })
+      .findByIdAndUpdate(id, payload, {
+        returnDocument: 'after',
+        runValidators: true,
+      })
       .select('-password')
       .lean();
 
@@ -259,36 +325,65 @@ export class StudentsService {
     return student;
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // DELETE  (Admin only)
-  // ─────────────────────────────────────────────────────────────────────────
   async remove(id: string) {
-    const student = await this.studentModel.findByIdAndDelete(id).lean();
+    const student = await this.studentModel.findById(id).lean();
 
-    if (!student) throw new NotFoundException('Student not found');
-
-    return { message: 'Student deleted successfully' };
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // APPROVE  (Admin only)
-  // ─────────────────────────────────────────────────────────────────────────
-  async approveStudent(id: string): Promise<Student> {
-    const student = await this.findStudentByIdOrStudentId(id);
-
-    if (student.status !== 'approved') {
-      student.status = 'approved';
-      student.approvedAt = new Date().toISOString();
-      student.rejectionReason = undefined;
-      await student.save();
+    if (!student) {
+      throw new NotFoundException('Student not found');
     }
 
-    return this.generateStudentQrCode(student.studentId);
+    if (student.qrImageKey) {
+      try {
+        await this.storageService.deleteObject(student.qrImageKey);
+      } catch (error) {
+        this.logger.error(
+          'Failed to delete QR image from R2',
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    }
+
+    await this.studentModel.findByIdAndDelete(id);
+
+    return {
+      message: 'Student and QR deleted successfully',
+    };
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // REJECT  (Admin only)
-  // ─────────────────────────────────────────────────────────────────────────
+  async approveStudent(id: string): Promise<Student> {
+    const student = await this.findStudentByIdOrStudentId(id);
+    const shouldSendEmail = student.status !== 'approved';
+
+    student.status = 'approved';
+    student.approvedAt = new Date().toISOString();
+    student.rejectionReason = undefined;
+    await student.save();
+
+    if (shouldSendEmail) {
+      void this.emailService.sendApprovalEmail({
+        email: student.email,
+        name: student.fullNameEnglish ?? student.email,
+        studentId: student.studentId,
+      });
+    }
+
+    try {
+      return await this.generateStudentQrCode(student.studentId);
+    } catch (error) {
+      this.logger.error(
+        'QR generation/upload failed',
+        error instanceof Error ? error.message : String(error),
+      );
+
+      const approvedStudent = await this.studentModel
+        .findById(student._id)
+        .select('-password')
+        .exec();
+
+      return approvedStudent ?? student;
+    }
+  }
+
   async rejectStudent(id: string, dto: RejectStudentDto): Promise<object> {
     const student = await this.findStudentByIdOrStudentId(id);
     const shouldSendEmail = student.status !== 'rejected';
@@ -298,29 +393,25 @@ export class StudentsService {
     await student.save();
 
     if (shouldSendEmail) {
-      // FIX: was student.fullNameEnglish ?? student.name ?? student.email
       void this.emailService.sendRejectionEmail({
-        email:     student.email,
-        name:      student.fullNameEnglish ?? student.email,
+        email: student.email,
+        name: student.fullNameEnglish ?? student.email,
         studentId: student.studentId,
-        reason:    dto.reason.trim(),
+        reason: dto.reason.trim(),
       });
     }
 
     return {
       message: 'Student registration rejected.',
       data: {
-        _id:             student._id,
-        studentId:       student.studentId,
-        status:          student.status,
+        _id: student._id,
+        studentId: student.studentId,
+        status: student.status,
         rejectionReason: student.rejectionReason,
       },
     };
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // ENROLMENT HISTORY  (Admin or own student)
-  // ─────────────────────────────────────────────────────────────────────────
   async getEnrolmentHistory(
     targetId: string,
     requesterId: string,
@@ -339,27 +430,23 @@ export class StudentsService {
 
     if (!student) throw new NotFoundException('Student not found');
 
-    // FIX: was student.fullNameEnglish ?? student.name ?? ''
-    const history: EnrolmentHistoryDto = {
-      studentId:       (student._id as Types.ObjectId).toString(),
-      studentCode:     student.studentId,
-      name:            student.fullNameEnglish ?? '',
-      email:           student.email,
-      phone:           student.phone ?? student.whatsappNo ?? '',
-      modules:         student.modules ?? [],
-      batch:           student.batch ?? '',
-      status:          student.status,
-      enrolledAt:      student.enrolledAt,
-      approvedAt:      student.approvedAt ?? null,
+    return {
+      studentId: (student._id as Types.ObjectId).toString(),
+      studentCode: student.studentId,
+      name: student.fullNameEnglish ?? '',
+      email: student.email,
+      phone: student.phone ?? student.whatsappNo ?? '',
+      modules: student.subjects?.length
+        ? student.subjects
+        : student.modules ?? [],
+      batch: student.batch ?? '',
+      status: student.status,
+      enrolledAt: student.enrolledAt,
+      approvedAt: student.approvedAt ?? null,
       rejectionReason: student.rejectionReason,
     };
-
-    return history;
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // GENERATE QR CODE
-  // ─────────────────────────────────────────────────────────────────────────
   async generateStudentQrCode(studentId: string): Promise<Student> {
     if (!studentId?.trim()) {
       throw new BadRequestException('studentId is required');
@@ -375,43 +462,68 @@ export class StudentsService {
       );
     }
 
-    if (student.qrCode) return student;
-
-    // FIX: was student.fullNameEnglish ?? student.name
     const qrPayload = {
-      studentId:   student.studentId,
-      fullName:    student.fullNameEnglish ?? '',
-      email:       student.email,
+      studentId: student.studentId,
+      fullName: student.fullNameEnglish ?? '',
+      email: student.email,
       admissionNo: student.admissionNumber,
     };
 
-    let qrCode: string;
-
     try {
-      qrCode = await QRCode.toDataURL(JSON.stringify(qrPayload), {
+      const qrCode = await QRCode.toDataURL(JSON.stringify(qrPayload), {
         errorCorrectionLevel: 'M',
         margin: 1,
-        type: 'image/png',
         width: 300,
       });
-    } catch {
-      throw new InternalServerErrorException('Failed to generate QR code');
+
+      const qrBuffer = await QRCode.toBuffer(JSON.stringify(qrPayload), {
+        errorCorrectionLevel: 'M',
+        margin: 1,
+        type: 'png',
+        width: 300,
+      });
+
+      const uploadedQr = await this.storageService.uploadQrImage({
+        body: qrBuffer,
+        originalName: `${student.studentId}.png`,
+        contentType: 'image/png',
+        scope: student.studentId,
+        metadata: {
+          studentId: student.studentId,
+        },
+      });
+
+      const updated = await this.studentModel
+        .findByIdAndUpdate(
+          student._id,
+          {
+            $set: {
+              qrCode,
+              qrCodeUrl: uploadedQr.publicUrl,
+              qrImageKey: uploadedQr.key,
+            },
+          },
+          { returnDocument: 'after' },
+        )
+        .select('-password');
+
+      return updated ?? student;
+    } catch (error) {
+      this.logger.error(
+        `QR generation/upload failed for student ${studentId}`,
+        error instanceof Error ? error.message : String(error),
+      );
+
+      const fallback = await this.studentModel
+        .findOne({ studentId })
+        .select('-password')
+        .lean();
+
+      return (fallback ?? student) as unknown as Student;
     }
-
-    const updated = await this.studentModel
-      .findByIdAndUpdate(student._id, { $set: { qrCode } }, { new: true })
-      .select('-password');
-
-    return updated ?? student;
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // HELPERS
-  // ─────────────────────────────────────────────────────────────────────────
-
-  private resolveDateOfBirth(
-    personal: RegisterStudentDto['personal'],
-  ): Date {
+  private resolveDateOfBirth(personal: RegisterStudentDto['personal']): Date {
     if (personal.dateOfBirth) {
       const d = new Date(personal.dateOfBirth);
       if (isNaN(d.getTime())) {
@@ -426,18 +538,20 @@ export class StudentsService {
         dobMonth: number;
         dobYear: number;
       };
+
       const d = new Date(dobYear, dobMonth - 1, dobDay);
+
       if (isNaN(d.getTime())) {
         throw new BadRequestException(
           'Invalid date of birth — check dobDay, dobMonth, dobYear values',
         );
       }
+
       return d;
     }
 
     throw new BadRequestException(
-      'Date of birth is required — provide dateOfBirth (ISO string) ' +
-      'or dobDay + dobMonth + dobYear',
+      'Date of birth is required — provide dateOfBirth or dobDay + dobMonth + dobYear',
     );
   }
 
@@ -445,7 +559,10 @@ export class StudentsService {
     const counter = await this.counterModel.findOneAndUpdate(
       { name: 'studentId' },
       { $inc: { seq: 1 } },
-      { new: true, upsert: true },
+      {
+        returnDocument: 'after',
+        upsert: true,
+      },
     );
 
     const padded = String(counter.seq).padStart(3, '0');
@@ -460,7 +577,10 @@ export class StudentsService {
     const counter = await this.counterModel.findOneAndUpdate(
       { name: `${name}_${year}` },
       { $inc: { seq: 1 } },
-      { new: true, upsert: true },
+      {
+        returnDocument: 'after',
+        upsert: true,
+      },
     );
 
     if (!counter) {
@@ -491,11 +611,9 @@ export class StudentsService {
     return student;
   }
 
-  // FIX: removed validateRequiredString(dto.name, ...) — 'name' not in schema
-  // Now validates the fields that actually exist on CreateStudentPayload
   private validateRegistration(dto: CreateStudentPayload): void {
     this.validateRequiredString(dto.email, 'email');
-    this.validateRequiredString(dto.phone, 'phone');
+    this.validateRequiredString(dto.phone ?? dto.whatsappNo, 'phone');
     this.validateRequiredString(dto.batch, 'batch');
   }
 

@@ -17,6 +17,7 @@ import { StorageModule } from './storage/storage.module';
 import { StudentsModule } from './students/students.module';
 import { TeachersModule } from './teachers/teachers.module';
 import { AuthModule } from './auth/auth.module';
+import { ContactModule } from './contact/contact.module';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
 @Module({
@@ -44,6 +45,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
     DashboardModule,
     PaymentsModule,
     AuthModule,
+    ContactModule,
     StorageModule,
   ],
   controllers: [AppController],

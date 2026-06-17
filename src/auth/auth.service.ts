@@ -1,10 +1,11 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
 import { Role } from '../enums/role.enum';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class AuthService {
@@ -13,6 +14,7 @@ export class AuthService {
     private configService: ConfigService,
     @InjectModel('Student') private studentModel: Model<any>,
     @InjectModel('Teacher') private teacherModel: Model<any>,
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -177,6 +179,80 @@ export class AuthService {
       return { ...teacher, role: Role.TEACHER };
     }
     throw new UnauthorizedException('Invalid user role');
+  }
+
+  async forgotPassword(email: string): Promise<void> {
+    const student = await this.studentModel.findOne({ email: email.toLowerCase().trim() });
+
+    // Always return success — do not reveal whether the email is registered
+    if (!student) return;
+
+    const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+    const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    student.resetToken = resetToken;
+    student.resetTokenExpiry = resetTokenExpiry;
+    await student.save();
+
+    void this.emailService.sendPasswordResetEmail({
+      email: student.email,
+      name: student.fullNameEnglish ?? student.email,
+      resetToken,
+    });
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    const student = await this.studentModel.findOne({
+      resetToken: token,
+      resetTokenExpiry: { $gt: new Date() },
+    });
+
+    if (!student) {
+      throw new BadRequestException('Invalid or expired reset code');
+    }
+
+    student.password = await bcrypt.hash(newPassword, 10);
+    student.resetToken = undefined;
+    student.resetTokenExpiry = undefined;
+    await student.save();
+
+    return { message: 'Password reset successfully' };
+  }
+
+  /**
+   * Change password for an authenticated student.
+   * Requires the current password to be correct before setting the new one.
+   */
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<{ message: string }> {
+    const student = await this.studentModel.findById(userId);
+
+    if (!student) {
+      throw new UnauthorizedException('Student not found');
+    }
+
+    // Verify the current password
+    const isMatch = await bcrypt.compare(currentPassword, student.password);
+    if (!isMatch) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    // Prevent setting the same password
+    const isSame = await bcrypt.compare(newPassword, student.password);
+    if (isSame) {
+      throw new BadRequestException(
+        'New password must be different from the current password',
+      );
+    }
+
+    // Hash and save the new password
+    student.password = await bcrypt.hash(newPassword, 10);
+    await student.save();
+
+    return { message: 'Password changed successfully' };
   }
 
   async hashPassword(plain: string): Promise<string> {
