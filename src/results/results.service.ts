@@ -181,10 +181,14 @@ export class ResultsService {
   }
 
   private calculateGrade(marks: number): 'A' | 'B' | 'C' | 'F' {
-    if (marks >= 75) return 'A';
-    if (marks >= 65) return 'B';
-    if (marks >= 35) return 'C';
-    return 'F';
+    if (marks < 0 || marks > 100) {
+    throw new BadRequestException('Marks must be between 0 and 100');
+  }
+
+  if (marks >= 75) return 'A';
+  if (marks >= 65) return 'B';
+  if (marks >= 35) return 'C';
+  return 'F';
   }
 
   private getStudentModules(student: any): string[] {
