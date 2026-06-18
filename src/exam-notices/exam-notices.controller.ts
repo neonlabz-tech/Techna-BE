@@ -6,8 +6,10 @@ import {
   Param,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateExamNoticeDto } from './dto/create-exam-notice.dto';
 import { UpdateExamNoticeDto } from './dto/update-exam-notice.dto';
 import { ExamNoticesService } from './exam-notices.service';
@@ -29,6 +31,17 @@ export class ExamNoticesController {
   @Get('public')
   findPublished() {
     return this.examNoticesService.findPublished();
+  }
+
+  @Get('student/:studentId')
+  @UseGuards(JwtAuthGuard)
+  getResultsByStudentId(@Param('studentId') studentId: string) {
+    return this.examNoticesService.getResultsByStudentId(studentId);
+  }
+
+  @Get('student/:studentId/public')
+  getResultsByStudentIdPublic(@Param('studentId') studentId: string) {
+    return this.examNoticesService.getResultsByStudentId(studentId);
   }
 
   @Get(':id')
