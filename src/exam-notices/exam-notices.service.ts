@@ -8,12 +8,14 @@ import {
   ExamNotice,
   ExamNoticeDocument,
 } from './schemas/exam-notice.schema';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ExamNoticesService {
   constructor(
     @InjectModel(ExamNotice.name)
     private readonly examNoticeModel: Model<ExamNoticeDocument>,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(createExamNoticeDto: CreateExamNoticeDto) {
@@ -24,7 +26,24 @@ export class ExamNoticesService {
     };
 
     const examNotice = new this.examNoticeModel(payload);
-    return examNotice.save();
+    const saved = await examNotice.save();
+
+    // Auto-send notification when exam notice is published on creation
+    if (saved.isPublished) {
+      void this.notificationsService.notifyExamNotice({
+        _id: saved._id?.toString(),
+        title: saved.title,
+        moduleName: saved.moduleName,
+        moduleId: saved.moduleId,
+        batch: saved.batch,
+        date: saved.date,
+        startTime: saved.startTime,
+        endTime: saved.endTime,
+        venue: saved.venue,
+      });
+    }
+
+    return saved;
   }
 
   async findAll() {
@@ -50,6 +69,13 @@ export class ExamNoticesService {
   }
 
   async update(id: string, updateExamNoticeDto: UpdateExamNoticeDto) {
+    // Check current state before update to detect publish transition
+    const existing = await this.examNoticeModel.findById(id).lean();
+
+    if (!existing) {
+      throw new NotFoundException('Exam notice not found');
+    }
+
     const updatePayload: UpdateExamNoticeDto & { publishedAt?: Date | null } = {
       ...updateExamNoticeDto,
     };
@@ -73,6 +99,21 @@ export class ExamNoticesService {
       throw new NotFoundException('Exam notice not found');
     }
 
+    // Auto-send notification when exam notice transitions from unpublished to published
+    if (!existing.isPublished && updatedExamNotice.isPublished) {
+      void this.notificationsService.notifyExamNotice({
+        _id: updatedExamNotice._id?.toString(),
+        title: updatedExamNotice.title,
+        moduleName: updatedExamNotice.moduleName,
+        moduleId: updatedExamNotice.moduleId,
+        batch: updatedExamNotice.batch,
+        date: updatedExamNotice.date,
+        startTime: updatedExamNotice.startTime,
+        endTime: updatedExamNotice.endTime,
+        venue: updatedExamNotice.venue,
+      });
+    }
+
     return updatedExamNotice;
   }
 
@@ -92,6 +133,19 @@ export class ExamNoticesService {
     if (!examNotice) {
       throw new NotFoundException('Exam notice not found');
     }
+
+    // Send notification to students
+    void this.notificationsService.notifyExamNotice({
+      _id: examNotice._id?.toString(),
+      title: examNotice.title,
+      moduleName: examNotice.moduleName,
+      moduleId: examNotice.moduleId,
+      batch: examNotice.batch,
+      date: examNotice.date,
+      startTime: examNotice.startTime,
+      endTime: examNotice.endTime,
+      venue: examNotice.venue,
+    });
 
     return examNotice;
   }

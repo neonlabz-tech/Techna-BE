@@ -18,6 +18,7 @@ import { StudentsModule } from './students/students.module';
 import { TeachersModule } from './teachers/teachers.module';
 import { AuthModule } from './auth/auth.module';
 import { ContactModule } from './contact/contact.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 // ← removed JwtAuthGuard and RolesGuard imports (no longer needed here)
 
@@ -48,6 +49,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
     AuthModule,
     ContactModule,
     StorageModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [

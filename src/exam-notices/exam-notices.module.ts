@@ -7,12 +7,14 @@ import {
   ExamNotice,
   ExamNoticeSchema,
 } from './schemas/exam-notice.schema';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: ExamNotice.name, schema: ExamNoticeSchema },
     ]),
+    NotificationsModule,
   ],
   controllers: [ExamNoticesController],
   providers: [ExamNoticesService],
