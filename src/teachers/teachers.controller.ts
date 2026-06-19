@@ -9,7 +9,10 @@ import {
   UseGuards,
   Request,
   ForbiddenException,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { TeachersService } from './teachers.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -59,5 +62,16 @@ export class TeachersController {
   @Roles(Role.ADMIN)
   remove(@Param('id') id: string) {
     return this.teachersService.remove(id);
+  }
+
+  // ─── POST /api/teachers/:id/upload-photo  (admin only) ─────────────────────
+  @Post(':id/upload-photo')
+  @Roles(Role.ADMIN)
+  @UseInterceptors(FileInterceptor('photo'))
+  uploadPhoto(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.teachersService.uploadPhoto(id, file);
   }
 }
