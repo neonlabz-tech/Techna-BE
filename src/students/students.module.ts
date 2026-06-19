@@ -8,6 +8,7 @@ import { Student, StudentSchema } from './schemas/student.schema';
 import { StudentsController } from './students.controller';
 import { StudentsService } from './students.service';
 import { StorageModule } from '../storage/storage.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { StorageModule } from '../storage/storage.module';
       
     ]),
     StorageModule,
+    NotificationsModule,
   ],
   controllers: [StudentsController],
   providers: [StudentsService],

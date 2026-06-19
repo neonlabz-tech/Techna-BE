@@ -34,6 +34,12 @@ export class Teacher {
 
   @Prop({ required: true, enum: ['active', 'inactive'], default: 'active' })
   status: 'active' | 'inactive';
+
+  @Prop({ type: String, default: '' })
+  photoUrl?: string;
+
+  @Prop({ type: String, default: '' })
+  photoKey?: string;
 }
 
 export const TeacherSchema = SchemaFactory.createForClass(Teacher);

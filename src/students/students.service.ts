@@ -15,6 +15,8 @@ import * as QRCode from 'qrcode';
 
 import { EmailService } from '../email/email.service';
 import { StorageService } from '../storage/storage.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsAutoService } from '../notifications/notifications-auto.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { EnrolmentHistoryDto } from './dto/enrolment-history.dto';
 import { RegisterStudentDto } from './dto/register-student.dto';
@@ -45,6 +47,8 @@ export class StudentsService {
 
     private readonly emailService: EmailService,
     private readonly storageService: StorageService,
+    private readonly notificationsService: NotificationsService,
+    private readonly notificationsAutoService: NotificationsAutoService,
   ) {}
 
   async findAll(status?: 'pending' | 'approved' | 'rejected') {
@@ -382,6 +386,22 @@ export class StudentsService {
         name: student.fullNameEnglish ?? student.email,
         studentId: student.studentId,
       });
+
+      // Send real-time notification
+      void this.notificationsService.notifyRegistrationApproved({
+        _id: student._id.toString(),
+        studentId: student.studentId,
+        fullNameEnglish: student.fullNameEnglish,
+        email: student.email,
+      });
+
+      // Send welcome notification with onboarding info
+      void this.notificationsAutoService.onStudentApproved({
+        _id: student._id.toString(),
+        studentId: student.studentId,
+        fullNameEnglish: student.fullNameEnglish,
+        batch: student.batch,
+      });
     }
 
     try {
@@ -416,6 +436,7 @@ export class StudentsService {
         studentId: student.studentId,
         reason: dto.reason.trim(),
       });
+      // No notification needed — rejected students can't login to see it
     }
 
     return {
