@@ -5,6 +5,7 @@ import { PaymentsController } from './payments.controller';
 import { PaymentsService } from './payments.service';
 import { Student, StudentSchema } from '../students/schemas/student.schema';
 import { Module as SchoolModule, ModuleSchema } from '../modules/schemas/module.schema';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { Module as SchoolModule, ModuleSchema } from '../modules/schemas/module.
       { name: Student.name, schema: StudentSchema },
       { name: SchoolModule.name, schema: ModuleSchema },
     ]),
+    NotificationsModule,
   ],
   controllers: [PaymentsController],
   providers: [PaymentsService],

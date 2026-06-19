@@ -9,6 +9,7 @@ import {
 } from './schemas/exam-notice.schema';
 import { Student, StudentSchema } from '../students/schemas/student.schema';
 import { Result, ResultSchema } from '../results/schemas/result.schema';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { Result, ResultSchema } from '../results/schemas/result.schema';
       { name: Student.name, schema: StudentSchema },
       { name: Result.name, schema: ResultSchema },
     ]),
+    NotificationsModule,
   ],
   controllers: [ExamNoticesController],
   providers: [ExamNoticesService],
