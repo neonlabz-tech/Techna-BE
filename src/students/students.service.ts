@@ -52,6 +52,20 @@ export class StudentsService {
     return this.studentModel.find(filter).select('-password').lean();
   }
 
+  async getUniqueBatches(): Promise<string[]> {
+    const batches = await this.studentModel.distinct('batch', {
+      batch: { $nin: [null, ''] },
+    });
+
+    return Array.from(
+      new Set(
+        batches
+          .map((batch) => (typeof batch === 'string' ? batch.trim() : ''))
+          .filter(Boolean),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+  }
+
   async findOne(id: string) {
     const student = await this.studentModel
       .findById(id)

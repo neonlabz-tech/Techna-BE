@@ -20,6 +20,7 @@ import { AuthModule } from './auth/auth.module';
 import { ContactModule } from './contact/contact.module';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { ResultsModule } from './results/results.module';
+import { AnnouncementsModule } from './announcements/announcements.module';
 
 // ← removed JwtAuthGuard and RolesGuard imports (no longer needed here)
 
@@ -51,6 +52,7 @@ import { ResultsModule } from './results/results.module';
     ContactModule,
     StorageModule,
     ResultsModule,
+    AnnouncementsModule,
   ],
   controllers: [AppController],
   providers: [
