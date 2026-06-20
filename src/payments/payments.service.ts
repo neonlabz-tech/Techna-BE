@@ -12,6 +12,7 @@ import { Student } from '../students/schemas/student.schema';
 import { Module as SchoolModule } from '../modules/schemas/module.schema';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { PaymentTrackingQueryDto } from './dto/payment-tracking-query.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class PaymentsService {
@@ -19,6 +20,7 @@ export class PaymentsService {
     @InjectModel(Payment.name) private paymentModel: Model<any>,
     @InjectModel(Student.name) private readonly studentModel: Model<any>,
     @InjectModel(SchoolModule.name) private readonly moduleModel: Model<any>,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async findAll() {
@@ -82,12 +84,58 @@ export class PaymentsService {
       notes: data.notes,
     });
 
+    // Send payment confirmation notification to student
+    if (payment.status === 'paid') {
+      void this.notificationsService.notifyPaymentConfirmed({
+        studentId: data.studentId,
+        studentName: data.studentName?.trim() || student.name,
+        moduleName: data.moduleName?.trim() || module.name,
+        amount: data.amount,
+        receiptNo,
+        paidDate,
+      });
+    }
+
     return this.toPaymentRecord(payment);
   }
 
   async update(id: string, dto: UpdatePaymentDto) {
+    // Get existing payment to detect status change
+    const existing = await this.paymentModel.findById(id).lean();
+    if (!existing) throw new NotFoundException('Payment not found');
+
     const payment = await this.paymentModel.findByIdAndUpdate(id, dto, { new: true }).lean();
     if (!payment) throw new NotFoundException('Payment not found');
+
+    // Send notification when payment status changes
+    if (dto.status && dto.status !== existing.status) {
+      if (dto.status === 'paid') {
+        // Payment confirmed notification
+        void this.notificationsService.notifyPaymentConfirmed({
+          studentId: payment.studentId,
+          studentName: payment.studentName,
+          moduleName: payment.moduleName,
+          amount: payment.amount,
+          receiptNo: payment.receiptNo,
+          paidDate: payment.paidDate,
+        });
+      } else if (dto.status === 'overdue') {
+        // Payment overdue notification
+        void this.notificationsService.notifyPaymentReminder({
+          studentId: payment.studentId,
+          moduleName: payment.moduleName,
+          message: `Your payment of Rs. ${payment.amount} for ${payment.moduleName} is now overdue. Please settle it at your earliest convenience.`,
+        });
+      } else if (dto.status === 'pending') {
+        // Payment pending notification
+        void this.notificationsService.notifyPaymentReminder({
+          studentId: payment.studentId,
+          moduleName: payment.moduleName,
+          message: `Your payment of Rs. ${payment.amount} for ${payment.moduleName} is pending. Please complete the payment soon.`,
+        });
+      }
+    }
+
     return this.toPaymentRecord(payment);
   }
 
