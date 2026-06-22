@@ -7,11 +7,10 @@ import {
   Body,
   Param,
   UseGuards,
-  Request,
-  ForbiddenException,
   UseInterceptors,
   UploadedFile,
 } from '@nestjs/common';
+import { Public } from '../auth/public.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { TeachersService } from './teachers.service';
@@ -33,13 +32,10 @@ export class TeachersController {
     return this.teachersService.findAll();
   }
 
-  // ─── GET /api/teachers/:id  (admin sees any; teacher sees own profile) ──────
+  // ─── GET /api/teachers/:id  (public — used by website teacher profile page) ──
+  @Public()
   @Get(':id')
-  @Roles(Role.ADMIN, Role.TEACHER)
-  async findOne(@Param('id') id: string, @Request() req: any) {
-    if (req.user.role === Role.TEACHER && req.user.userId !== id) {
-      throw new ForbiddenException('You can only view your own profile');
-    }
+  findOne(@Param('id') id: string) {
     return this.teachersService.findOne(id);
   }
 
@@ -73,5 +69,12 @@ export class TeachersController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     return this.teachersService.uploadPhoto(id, file);
+  }
+
+  // ─── DELETE /api/teachers/:id/photo  (admin only) ──────────────────────────
+  @Delete(':id/photo')
+  @Roles(Role.ADMIN)
+  removePhoto(@Param('id') id: string) {
+    return this.teachersService.removePhoto(id);
   }
 }

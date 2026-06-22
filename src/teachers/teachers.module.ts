@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Teacher, TeacherSchema } from './schemas/teacher.schema';
 import { TeachersController } from './teachers.controller';
+import { PublicTeachersController } from './public-teachers.controller';
 import { TeachersService } from './teachers.service';
 import { StorageModule } from '../storage/storage.module';
 
@@ -10,7 +11,7 @@ import { StorageModule } from '../storage/storage.module';
     MongooseModule.forFeature([{ name: Teacher.name, schema: TeacherSchema }]),
     StorageModule,
   ],
-  controllers: [TeachersController],
+  controllers: [TeachersController, PublicTeachersController],
   providers: [TeachersService],
   exports: [TeachersService],
 })
