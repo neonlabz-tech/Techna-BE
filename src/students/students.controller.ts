@@ -103,6 +103,11 @@ export class StudentsController {
     return this.studentsService.findAll(status);
   }
 
+  @Get('batches')
+  getBatches() {
+    return this.studentsService.getUniqueBatches();
+  }
+
   @Get(':id')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)

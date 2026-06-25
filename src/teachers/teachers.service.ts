@@ -56,6 +56,26 @@ export class TeachersService {
     return { message: 'Teacher deleted successfully' };
   }
 
+  async removePhoto(id: string) {
+    const teacher = await this.teacherModel.findById(id);
+    if (!teacher) throw new NotFoundException('Teacher not found');
+
+    if (teacher.photoKey) {
+      try {
+        await this.storageService.deleteFile(teacher.photoKey);
+      } catch (e) {
+        console.error('[Teacher] Failed to delete photo from R2:', e);
+      }
+    }
+
+    teacher.photoUrl = undefined;
+    teacher.photoKey = undefined;
+    await teacher.save();
+
+    const { password, ...result } = teacher.toObject();
+    return result;
+  }
+
   async uploadPhoto(id: string, file: Express.Multer.File) {
     if (!file) throw new BadRequestException('No file provided');
     if (!file.buffer || file.buffer.length === 0) {
