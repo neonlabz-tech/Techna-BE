@@ -4,6 +4,8 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Matches,
+  MinLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -37,6 +39,9 @@ export class CreateStudentDto {
   @ApiPropertyOptional({ example: '0771234567' })
   @IsString()
   @IsOptional()
+  @Matches(/^[0-9]{9,10}$/, {
+    message: 'Enter a valid phone number (9–10 digits)',
+  })
   whatsappNo?: string;
 
   @ApiPropertyOptional({ example: '0712345678' })
@@ -75,6 +80,7 @@ export class CreateStudentDto {
   @ApiPropertyOptional({ example: 'Jaffna' })
   @IsString()
   @IsOptional()
+  @IsNotEmpty({ message: 'Address is required' })
   permanentAddress?: string;
 
   @ApiPropertyOptional({ example: 'Jaffna' })
@@ -105,6 +111,9 @@ export class CreateStudentDto {
   @ApiPropertyOptional({ example: '200090423680' })
   @IsString()
   @IsOptional()
+  @Matches(/^([0-9]{9}[vVxX]|[0-9]{12})$/, {
+    message: 'Enter a valid NIC number (e.g. 991234567V or 199912345678)',
+  })
   nicNo?: string;
 
   @ApiPropertyOptional({ example: 'Central College' })
@@ -220,5 +229,6 @@ export class CreateStudentDto {
   @ApiPropertyOptional({ example: 'password123' })
   @IsString()
   @IsOptional()
+  @MinLength(8, { message: 'Password must be at least 8 characters' })
   password?: string;
 }
