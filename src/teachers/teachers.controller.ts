@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   UseInterceptors,
   UploadedFile,
@@ -28,8 +29,8 @@ export class TeachersController {
   // ─── GET /api/teachers  (admin only) ───────────────────────────────────────
   @Get()
   @Roles(Role.ADMIN)
-  findAll() {
-    return this.teachersService.findAll();
+  findAll(@Query('status') status?: string) {
+    return this.teachersService.findAll(status);
   }
 
   // ─── GET /api/teachers/:id  (public — used by website teacher profile page) ──
