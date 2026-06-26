@@ -653,6 +653,19 @@ export class StudentsService {
     this.validateRequiredString(dto.email, 'email');
     this.validateRequiredString(dto.phone ?? dto.whatsappNo, 'phone');
     this.validateRequiredString(dto.batch, 'batch');
+
+    const rawDob = dto.dateOfBirth ?? (dto as any).dob;
+    if (rawDob) {
+      const dob = new Date(rawDob);
+      if (isNaN(dob.getTime())) {
+        throw new BadRequestException('Invalid date of birth');
+      }
+      if (dob >= new Date()) {
+        throw new BadRequestException(
+          'Date of birth cannot be today or a future date',
+        );
+      }
+    }
   }
 
   private validateRequiredString(value: string | undefined, field: string) {
