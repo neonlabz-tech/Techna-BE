@@ -29,6 +29,15 @@ export class Module {
   @Prop({ required: true, enum: ['active', 'inactive'], default: 'active' })
   status!: 'active' | 'inactive';
 
+  @Prop({ type: String, default: '' })
+  term?: string;
+
+  @Prop({ type: Number, default: 0 })
+  unit?: number;
+
+  @Prop({ type: String, enum: ['main', 'basket', 'none'], default: 'none' })
+  subjectCategory?: 'main' | 'basket' | 'none';
+
   @Prop([
     {
       title: String,
