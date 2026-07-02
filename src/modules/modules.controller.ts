@@ -7,6 +7,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   UploadedFile,
   UseInterceptors,
@@ -39,8 +40,8 @@ export class ModulesController {
 
   @Get()
   @Roles(Role.ADMIN, Role.TEACHER, Role.STUDENT)
-  findAll() {
-    return this.modulesService.findAll();
+  findAll(@Query('status') status?: string) {
+    return this.modulesService.findAll(status);
   }
 
   @Get('public')

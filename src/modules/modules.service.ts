@@ -41,9 +41,10 @@ export class ModulesService {
     }
   }
 
-  async findAll() {
+  async findAll(status?: string) {
     try {
-      return await this.moduleModel.find().sort({ createdAt: -1 });
+      const filter = status ? { status } : {};
+      return await this.moduleModel.find(filter as any).sort({ createdAt: -1 });
     } catch (error: unknown) {
       throw new InternalServerErrorException(
         'Failed to fetch modules: ' +
