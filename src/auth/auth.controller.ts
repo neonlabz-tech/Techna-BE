@@ -101,8 +101,8 @@ export class AuthController {
   @Get('teacher')
   @ApiBearerAuth('access-token')
   @ApiUnauthorizedResponse({ description: 'Missing, invalid, or expired JWT' })
-  //@UseGuards(JwtAuthGuard, RolesGuard)
-  //@Roles(Role.ADMIN, Role.TEACHER)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.TEACHER)
   teacherOnly() {
     return { message: 'Welcome, Teacher!' };
   }
@@ -111,8 +111,8 @@ export class AuthController {
   @Get('student')
   @ApiBearerAuth('access-token')
   @ApiUnauthorizedResponse({ description: 'Missing, invalid, or expired JWT' })
-  //@UseGuards(JwtAuthGuard, RolesGuard)
-  //@Roles(Role.ADMIN, Role.STUDENT)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.STUDENT)
   studentOnly() {
     return { message: 'Welcome, Student!' };
   }
