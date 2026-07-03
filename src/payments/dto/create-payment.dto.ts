@@ -12,14 +12,30 @@ export class CreatePaymentDto {
   @IsString()
   studentName?: string;
 
-  @ApiProperty({ example: '665f1b2c3d4e5f6789019999' })
+  // Required ONLY for feeType: 'subject'. Admission Fee / ID Card Fee
+  // payments have no real module, so this is left undefined for them —
+  // enforced in PaymentsService.create(), not here.
+  @ApiPropertyOptional({ example: '665f1b2c3d4e5f6789019999' })
+  @IsOptional()
   @IsString()
-  moduleId!: string;
+  moduleId?: string;
 
   @ApiPropertyOptional({ example: 'Advanced ICT' })
   @IsOptional()
   @IsString()
   moduleName?: string;
+
+  // 'subject'   -> recurring monthly fee tied to a real Module (moduleId required)
+  // 'admission' -> one-time Admission Fee, no moduleId, no monthly uniqueness check
+  // 'idcard'    -> one-time ID Card Fee, no moduleId, no monthly uniqueness check
+  @ApiPropertyOptional({
+    enum: ['subject', 'admission', 'idcard'],
+    example: 'subject',
+    default: 'subject',
+  })
+  @IsOptional()
+  @IsIn(['subject', 'admission', 'idcard'])
+  feeType?: 'subject' | 'admission' | 'idcard';
 
   @ApiProperty({ example: 15000, minimum: 0 })
   @Type(() => Number)
