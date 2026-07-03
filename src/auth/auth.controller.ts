@@ -92,7 +92,7 @@ export class AuthController {
   @ApiBearerAuth('access-token')
   @ApiUnauthorizedResponse({ description: 'Missing, invalid, or expired JWT' })
   @UseGuards(JwtAuthGuard, RolesGuard)
-  //@Roles(Role.ADMIN)
+  @Roles(Role.ADMIN)
   adminOnly() {
     return { message: 'Welcome, Admin!' };
   }
