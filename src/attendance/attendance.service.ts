@@ -223,8 +223,14 @@ export class AttendanceService {
 
       const students = await this.studentModel
         .find(studentFilter)
-        .select('studentId name batch modules status')
-        .lean<{ studentId: string; name?: string; batch: string; modules: string[]; status: string }[]>()
+        .select('studentId fullNameEnglish batch modules status')
+        .lean<{
+          studentId: string;
+          fullNameEnglish?: string;
+          batch: string;
+          modules: string[];
+          status: string;
+        }[]>()
         .exec();
 
       if (query.studentId && students.length === 0) {
@@ -262,7 +268,7 @@ export class AttendanceService {
         return {
           id: student.studentId,
           studentId: student.studentId,
-          name: student.name,
+          name: student.fullNameEnglish,
           batch: student.batch,
           modules: student.modules,
           attendance: records.map((record) => this.mapAttendanceRecord(record)),

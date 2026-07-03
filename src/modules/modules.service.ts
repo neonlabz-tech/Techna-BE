@@ -1,5 +1,4 @@
 /// <reference types="multer" />
-
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
@@ -144,11 +143,11 @@ export class ModulesService {
     }
   }
 
-async uploadResource(
-  id: string,
-  file: Express.Multer.File,
-  title: string,
-) {
+  async uploadResource(
+    id: string,
+    file: Express.Multer.File,
+    title: string,
+  ) {
     let folder = 'others';
     let fileType = 'file';
 
