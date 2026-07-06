@@ -13,10 +13,10 @@ export class ContactService {
   ) {}
 
   async sendContactMessage(dto: CreateContactDto): Promise<void> {
-    const recipientEmail = this.configService.get<string>('GMAIL_USER');
+    const recipientEmail = this.configService.get<string>('ADMIN_EMAIL');
 
     if (!recipientEmail) {
-      this.logger.error('GMAIL_USER not configured in .env');
+      this.logger.error('ADMIN_EMAIL not configured in .env');
       throw new Error('Recipient email is not configured');
     }
 

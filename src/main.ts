@@ -24,9 +24,9 @@ async function bootstrap() {
   // CustomValidationPipe removed — it was blocking GET requests with "No data submitted"
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,             // strip unknown fields before reaching service
-      forbidNonWhitelisted: true,  // throw 400 if unknown fields are sent
-      transform: true,             // auto transform types
+      whitelist: true,             
+      forbidNonWhitelisted: true,  
+      transform: true,             
     }),
   );
 
