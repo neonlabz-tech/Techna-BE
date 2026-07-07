@@ -1,7 +1,12 @@
 /// <reference types="multer" />
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectCommand,
+  HeadObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { Model } from 'mongoose';
 
 import { Module, SchoolModuleDocument } from './schemas/module.schema';
@@ -15,6 +20,8 @@ import {
 
 @Injectable()
 export class ModulesService {
+  private readonly logger = new Logger(ModulesService.name);
+
   constructor(
     @InjectModel(Module.name)
     private readonly moduleModel: Model<SchoolModuleDocument>,
@@ -206,12 +213,27 @@ export class ModulesService {
       throw new NotFoundException('Resource not found');
     }
 
-    await this.s3.send(
-      new DeleteObjectCommand({
-        Bucket: process.env.CLOUDFLARE_R2_BUCKET_NAME!,
-        Key: resource.fileKey,
-      }),
-    );
+    const key =
+      resource.fileKey ||
+      this.extractKeyFromUrl(resource.url) ||
+      this.extractKeyFromUrl(resource.fileUrl);
+
+    if (key) {
+      try {
+        await this.s3.send(
+          new DeleteObjectCommand({
+            Bucket: process.env.CLOUDFLARE_R2_BUCKET_NAME!,
+            Key: key,
+          }),
+        );
+      } catch (error: unknown) {
+        // Never let an R2 failure block removing the record from MongoDB
+        this.logger.warn(
+          `Failed to delete R2 object for resource ${resourceId} (key: ${key}): ` +
+            (error instanceof Error ? error.message : 'Unknown error'),
+        );
+      }
+    }
 
     module.resources = (module.resources ?? []).filter(
       (r: any) => r._id.toString() !== resourceId,
@@ -221,6 +243,88 @@ export class ModulesService {
 
     return {
       message: 'Resource deleted successfully',
+    };
+  }
+
+  private extractKeyFromUrl(url?: string): string | null {
+    const base = (process.env.CLOUDFLARE_R2_PUBLIC_BASE_URL ?? '')
+      .trim()
+      .replace(/\/$/, '');
+
+    if (!base || !url || !url.startsWith(base)) {
+      return null;
+    }
+
+    return url.slice(base.length + 1);
+  }
+
+  private async r2ObjectExists(key: string): Promise<boolean> {
+    try {
+      await this.s3.send(
+        new HeadObjectCommand({
+          Bucket: process.env.CLOUDFLARE_R2_BUCKET_NAME!,
+          Key: key,
+        }),
+      );
+      return true;
+    } catch (error: any) {
+      if (
+        error?.$metadata?.httpStatusCode === 404 ||
+        error?.name === 'NotFound'
+      ) {
+        return false;
+      }
+      // Unknown error (network, auth, etc.) — don't treat as "missing"
+      throw error;
+    }
+  }
+
+  async syncResourcesWithR2() {
+    const modules = await this.moduleModel.find();
+    let checked = 0;
+    let removed = 0;
+
+    for (const module of modules) {
+      const resources = module.resources ?? [];
+      const kept: typeof resources = [];
+
+      for (const resource of resources) {
+        const key =
+          resource.fileKey || this.extractKeyFromUrl(resource.url) || this.extractKeyFromUrl(resource.fileUrl);
+
+        if (!key) {
+          // No way to verify (e.g. externally hosted URL) — leave it alone
+          kept.push(resource);
+          continue;
+        }
+
+        checked++;
+        try {
+          const exists = await this.r2ObjectExists(key);
+          if (exists) {
+            kept.push(resource);
+          } else {
+            removed++;
+          }
+        } catch {
+          // Couldn't verify due to an unexpected error — keep to be safe
+          kept.push(resource);
+        }
+      }
+
+      if (kept.length !== resources.length) {
+        module.resources = kept;
+        await module.save();
+      }
+    }
+
+    return {
+      checked,
+      removed,
+      message:
+        removed > 0
+          ? `Checked ${checked} resource(s), removed ${removed} record(s) whose file no longer exists in R2.`
+          : `Checked ${checked} resource(s). Everything is in sync with R2.`,
     };
   }
 

@@ -323,7 +323,7 @@ export class StudentsService {
     delete payloadBase.modules;
     delete payloadBase.subjects;
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       ...payloadBase,
       ...(selectedSubjects
         ? {
@@ -332,6 +332,29 @@ export class StudentsService {
           }
         : {}),
     };
+
+    if ('avatar' in data) {
+      const existing = await this.studentModel
+        .findById(id)
+        .select('avatar profilePhotoKey')
+        .lean();
+
+      if (
+        existing?.profilePhotoKey &&
+        existing.avatar !== data.avatar
+      ) {
+        try {
+          await this.storageService.deleteObject(existing.profilePhotoKey);
+        } catch (error) {
+          this.logger.error(
+            'Failed to delete old profile photo from R2',
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+        payload.profilePhoto = data.avatar;
+        payload.profilePhotoKey = undefined;
+      }
+    }
 
     const student = await this.studentModel
       .findByIdAndUpdate(id, payload, {
