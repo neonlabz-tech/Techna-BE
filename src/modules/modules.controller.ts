@@ -92,6 +92,12 @@ export class ModulesController {
     return this.modulesService.uploadResource(id, file, title);
   }
 
+  @Post('sync-r2')
+  @Roles(Role.ADMIN)
+  syncResourcesWithR2() {
+    return this.modulesService.syncResourcesWithR2();
+  }
+
   @Post(':id/add-resource-url')
   @Roles(Role.ADMIN)
   addResourceUrl(
