@@ -363,35 +363,42 @@ export class EmailService {
       `No. 42, Main Street, Jaffna, Sri Lanka`,
     ].join('\n');
 
-    await this.sendStudentEmail({
-      to: payload.adminEmail,
-      replyTo: payload.email,
-      subject: `New Inquiry: ${payload.subject} — ${payload.name}`,
-      text,
-      html,
-    });
+    await this.sendStudentEmail(
+      {
+        to: payload.adminEmail,
+        replyTo: payload.email,
+        subject: `New Inquiry: ${payload.subject} — ${payload.name}`,
+        text,
+        html,
+      },
+      { throwOnFailure: true },
+    );
   }
 
-  private async sendStudentEmail(email: {
-    to: string;
-    subject: string;
-    text: string;
-    html: string;
-    from?: string;
-    replyTo?: string;
-  }): Promise<void> {
+  private async sendStudentEmail(
+    email: {
+      to: string;
+      subject: string;
+      text: string;
+      html: string;
+      from?: string;
+      replyTo?: string;
+    },
+    options: { throwOnFailure?: boolean } = {},
+  ): Promise<void> {
     if (!email.to?.trim()) {
-      this.logger.error(
-        `Cannot send "${email.subject}": recipient email is missing`,
-      );
+      const message = `Cannot send "${email.subject}": recipient email is missing`;
+      this.logger.error(message);
+      if (options.throwOnFailure) throw new Error(message);
       return;
     }
 
     if (!this.resend) {
-      this.logger.error(
+      const message =
         `Cannot send "${email.subject}" to ${email.to}: ` +
-          'Resend not configured — check RESEND_API_KEY in .env',
-      );
+        'Resend not configured — check RESEND_API_KEY in .env';
+      this.logger.error(message);
+      if (options.throwOnFailure) throw new Error(message);
       return;
     }
 
@@ -409,6 +416,7 @@ export class EmailService {
         this.logger.error(
           `Resend error sending "${email.subject}" to ${email.to}: ${error.message}`,
         );
+        if (options.throwOnFailure) throw new Error(error.message);
         return;
       }
 
@@ -420,6 +428,7 @@ export class EmailService {
         `Failed to send "${email.subject}" to ${email.to}`,
         err instanceof Error ? err.stack : String(err),
       );
+      if (options.throwOnFailure) throw err;
     }
   }
 
