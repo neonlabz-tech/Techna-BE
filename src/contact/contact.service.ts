@@ -1,4 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EmailService } from '../email/email.service';
 import { CreateContactDto } from './dto/create-contact.dto';
@@ -17,17 +21,29 @@ export class ContactService {
 
     if (!recipientEmail) {
       this.logger.error('ADMIN_EMAIL not configured in .env');
-      throw new Error('Recipient email is not configured');
+      throw new InternalServerErrorException(
+        'Recipient email is not configured',
+      );
     }
 
-    await this.emailService.sendContactEmail({
-      adminEmail: recipientEmail,
-      name: dto.name,
-      email: dto.email,
-      phone: dto.phone || 'Not provided',
-      subject: dto.subject,
-      message: dto.message,
-    });
+    try {
+      await this.emailService.sendContactEmail({
+        adminEmail: recipientEmail,
+        name: dto.name,
+        email: dto.email,
+        phone: dto.phone || 'Not provided',
+        subject: dto.subject,
+        message: dto.message,
+      });
+    } catch (err) {
+      this.logger.error(
+        `Failed to deliver contact message from ${dto.name} (${dto.email})`,
+        err instanceof Error ? err.stack : String(err),
+      );
+      throw new InternalServerErrorException(
+        'Failed to send your message. Please try again later.',
+      );
+    }
 
     this.logger.log(
       `Contact message from ${dto.name} (${dto.email}) sent to ${recipientEmail}`,
