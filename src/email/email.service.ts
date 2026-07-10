@@ -44,7 +44,6 @@ export class EmailService {
         '',
         'We have received your registration.',
         `Student Name: ${payload.name}`,
-        `Student ID: ${payload.studentId}`,
         '',
         'We will notify you once your registration status is updated.',
         '',
@@ -64,12 +63,8 @@ export class EmailService {
                 <td style="padding:10px;border:1px solid #ddd;font-weight:bold;">Student Name</td>
                 <td style="padding:10px;border:1px solid #ddd;">${this.escapeHtml(this.toTitleCase(payload.name))}</td>
               </tr>
-              <tr>
-                <td style="padding:10px;border:1px solid #ddd;font-weight:bold;">Student ID</td>
-                <td style="padding:10px;border:1px solid #ddd;">${this.escapeHtml(payload.studentId)}</td>
-              </tr>
             </table>
-            <p>We will notify you once your registration status is updated.</p>
+            <p>Your application is under review. We will notify you once your registration status is updated.</p>
             <p style="color:#666;font-size:13px;">Thank you for choosing Techna!</p>
           </div>
           <p style="text-align:center;color:#999;font-size:12px;margin-top:15px;">
