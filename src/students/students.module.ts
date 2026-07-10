@@ -16,7 +16,6 @@ import { NotificationsModule } from '../notifications/notifications.module';
     MongooseModule.forFeature([
       { name: Student.name, schema: StudentSchema },
       { name: Counter.name, schema: CounterSchema },
-      
     ]),
     StorageModule,
     NotificationsModule,

@@ -24,6 +24,10 @@ import { RejectStudentDto } from './dto/reject-student.dto';
 import { Counter, CounterDocument } from './schemas/counter.schema';
 import { Student, StudentDocument } from './schemas/student.schema';
 
+// Placeholder studentId assigned at registration; the real ID is only
+// generated once the student is approved (see approveStudent()).
+const PENDING_STUDENT_ID_PREFIX = 'PENDING-';
+
 export type CreateStudentPayload = CreateStudentDto & {
   password?: string;
   studentId?: string;
@@ -114,20 +118,18 @@ export class StudentsService {
     }
 
     const year = new Date().getFullYear();
-
-    const [
-      studentId,
-      admissionNumber,
-      serialNumber,
-      applicationReference,
-    ] = await Promise.all([
-      this.generateStudentId(),
-      this.generateReference('admissionNumber', 'ADM', year),
-      this.generateReference('serialNumber', 'SN', year),
-      this.generateReference('applicationReference', 'APP', year),
-    ]);
-
     const selectedSubjects = dto.subjectSelection.subjects ?? [];
+
+    // studentId is only generated once the student is approved (see
+    // approveStudent()) — the counter must count approved students only.
+    const studentId = `${PENDING_STUDENT_ID_PREFIX}${randomUUID()}`;
+
+    const [admissionNumber, serialNumber, applicationReference] =
+      await Promise.all([
+        this.generateReference('admissionNumber', 'ADM', year),
+        this.generateReference('serialNumber', 'SN', year),
+        this.generateReference('applicationReference', 'APP', year),
+      ]);
     const uploadedProfilePhoto = profilePhoto
       ? await this.storageService.uploadProfilePhoto({
           body: profilePhoto.buffer,
@@ -280,7 +282,14 @@ export class StudentsService {
         data.parentPhone?.trim(),
       modules: selectedSubjects,
       subjects: selectedSubjects,
-      studentId: data.studentId?.trim() || (await this.generateStudentId()),
+      // studentId is only generated for real once the student is approved
+      // (see approveStudent()) — unless this call creates them as already
+      // approved, in which case there's no later approval step to do it.
+      studentId:
+        data.studentId?.trim() ||
+        (data.status === 'approved'
+          ? await this.generateStudentId(selectedSubjects, data.batch)
+          : `${PENDING_STUDENT_ID_PREFIX}${randomUUID()}`),
       qrToken: data.qrToken?.trim() || randomUUID(),
       status: data.status ?? 'pending',
       enrolledAt: data.enrolledAt ?? new Date().toISOString(),
@@ -333,16 +342,20 @@ export class StudentsService {
         : {}),
     };
 
-    if ('avatar' in data) {
-      const existing = await this.studentModel
-        .findById(id)
-        .select('avatar profilePhotoKey')
-        .lean();
+    const needsExisting =
+      'avatar' in data ||
+      data.batch !== undefined ||
+      selectedSubjects !== undefined;
 
-      if (
-        existing?.profilePhotoKey &&
-        existing.avatar !== data.avatar
-      ) {
+    const existing = needsExisting
+      ? await this.studentModel
+          .findById(id)
+          .select('avatar profilePhotoKey batch subjects studentId')
+          .lean()
+      : null;
+
+    if ('avatar' in data && existing?.profilePhotoKey) {
+      if (existing.avatar !== data.avatar) {
         try {
           await this.storageService.deleteObject(existing.profilePhotoKey);
         } catch (error) {
@@ -353,6 +366,31 @@ export class StudentsService {
         }
         payload.profilePhoto = data.avatar;
         payload.profilePhotoKey = undefined;
+      }
+    }
+
+   
+    if (existing) {
+      const hasRealId =
+        !!existing.studentId &&
+        !existing.studentId.startsWith(PENDING_STUDENT_ID_PREFIX);
+
+      if (hasRealId) {
+        const newBatch = data.batch?.trim() || existing.batch || '';
+        const batchChanged =
+          !!data.batch?.trim() && newBatch !== (existing.batch || '');
+
+        const subjectsChanged =
+          !!selectedSubjects &&
+          JSON.stringify(selectedSubjects) !==
+            JSON.stringify(existing.subjects ?? []);
+
+        if (batchChanged || subjectsChanged) {
+          payload.studentId = await this.generateStudentId(
+            selectedSubjects ?? existing.subjects ?? [],
+            newBatch,
+          );
+        }
       }
     }
 
@@ -397,6 +435,18 @@ export class StudentsService {
   async approveStudent(id: string): Promise<Student> {
     const student = await this.findStudentByIdOrStudentId(id);
     const shouldSendEmail = student.status !== 'approved';
+
+    // Real studentId is generated here, at approval time, so the per-batch
+    // counter only ever counts approved students.
+    if (
+      !student.studentId ||
+      student.studentId.startsWith(PENDING_STUDENT_ID_PREFIX)
+    ) {
+      student.studentId = await this.generateStudentId(
+        student.subjects ?? [],
+        student.batch ?? '',
+      );
+    }
 
     student.status = 'approved';
     student.approvedAt = new Date().toISOString();
@@ -616,9 +666,28 @@ export class StudentsService {
     );
   }
 
-  private async generateStudentId(): Promise<string> {
+  private readonly GLOBAL_STUDENT_SEQ_COUNTER = 'global_student_seq';
+
+  
+  private async generateStudentId(
+    subjects: string[] = [],
+    batch?: string,
+  ): Promise<string> {
+    const cleanSubjects = subjects
+      .map((s) => s?.trim())
+      .filter((s): s is string => !!s);
+
+    const initials =
+      cleanSubjects.length > 0
+        ? cleanSubjects.map((s) => s.charAt(0).toUpperCase()).join('')
+        : 'STU';
+
+    const cleanBatch = batch?.trim() || 'NA';
+
+    await this.healGlobalCounterFloor();
+
     const counter = await this.counterModel.findOneAndUpdate(
-      { name: 'studentId' },
+      { name: this.GLOBAL_STUDENT_SEQ_COUNTER },
       { $inc: { seq: 1 } },
       {
         returnDocument: 'after',
@@ -626,8 +695,32 @@ export class StudentsService {
       },
     );
 
-    const padded = String(counter.seq).padStart(3, '0');
-    return `STU${padded}`;
+    const seq = String(counter.seq).padStart(3, '0');
+    return `${initials}-${cleanBatch}-${seq}`;
+  }
+
+  
+  private async healGlobalCounterFloor(): Promise<void> {
+    const approvedCount = await this.studentModel.countDocuments({
+      status: 'approved',
+    });
+
+    await this.counterModel.updateOne(
+      { name: this.GLOBAL_STUDENT_SEQ_COUNTER },
+      { $max: { seq: approvedCount } },
+      { upsert: true },
+    );
+  }
+
+  
+  async migrateCounters(): Promise<{ seq: number }> {
+    await this.healGlobalCounterFloor();
+
+    const counter = await this.counterModel
+      .findOne({ name: this.GLOBAL_STUDENT_SEQ_COUNTER })
+      .lean();
+
+    return { seq: counter?.seq ?? 0 };
   }
 
   private async generateReference(
