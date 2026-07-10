@@ -58,11 +58,13 @@ export class ResultsService {
     const result = await this.resultModel.create({
       studentId: student.studentId,
       studentName:
-        student.fullNameEnglish || student.fullNameEnglish || student.email || 'Student',
+        student.fullNameEnglish ||
+        student.email ||
+        'Student',
       batch: student.batch || '',
+      date: dto.date ? new Date(dto.date) : new Date(),
       modules,
     });
-
     return result;
   }
 

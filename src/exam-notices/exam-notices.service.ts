@@ -257,7 +257,7 @@ export class ExamNoticesService {
         title: exam.title,
         moduleName: exam.moduleName,
         examType: matched?.examType ?? null,
-        date: exam.date,
+       date: exam.date,
         venue: exam.venue,
         startTime: exam.startTime,
         endTime: exam.endTime,
