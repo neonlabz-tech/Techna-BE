@@ -1,14 +1,16 @@
+import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsDateString,
   IsEnum,
   IsNotEmpty,
   IsNumber,
+  IsOptional,
   IsString,
   Max,
   Min,
   ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
 
 export class CreateModuleResultDto {
   @IsString()
@@ -28,6 +30,10 @@ export class CreateResultDto {
   @IsString()
   @IsNotEmpty()
   studentId!: string;
+
+  @IsOptional()
+  @IsDateString()
+  date?: string;
 
   @IsArray()
   @ValidateNested({ each: true })
