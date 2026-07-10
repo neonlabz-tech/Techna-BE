@@ -10,8 +10,6 @@ export interface EnvironmentVariables {
   CLOUDFLARE_R2_BUCKET_NAME?: string;
   CLOUDFLARE_R2_ENDPOINT?: string;
   CLOUDFLARE_R2_PUBLIC_BASE_URL?: string;
-  GMAIL_USER?: string;
-  GMAIL_APP_PASSWORD?: string;
   ADMIN_EMAIL?: string;
 }
 
@@ -26,12 +24,12 @@ export function validateEnvironment(
     throw new Error('MONGO_URI is required');
   }
 
-  if (!environment.GMAIL_USER) {
-    throw new Error('GMAIL_USER is required');
+  if (!environment.RESEND_API_KEY) {
+    throw new Error('RESEND_API_KEY is required');
   }
 
-  if (!environment.GMAIL_APP_PASSWORD) {
-    throw new Error('GMAIL_APP_PASSWORD is required');
+  if (!environment.RESEND_FROM_EMAIL) {
+    environment.RESEND_FROM_EMAIL = 'Techna <onboarding@resend.dev>';
   }
 
   return environment;

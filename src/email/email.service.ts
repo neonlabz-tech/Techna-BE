@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
 interface StudentEmailPayload {
   email: string;
@@ -15,34 +15,24 @@ interface StudentRejectionEmailPayload extends StudentEmailPayload {
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private transporter: nodemailer.Transporter | null = null;
+  private resend: Resend | null = null;
   private readonly fromEmail: string;
 
   constructor(private readonly configService: ConfigService) {
-    const user = this.configService.get<string>('GMAIL_USER');
-    const pass = this.configService.get<string>('GMAIL_APP_PASSWORD');
+    const apiKey = this.configService.get<string>('RESEND_API_KEY');
 
-    this.fromEmail = user ? `Techna <${user}>` : 'Techna <noreply@techna.lk>';
+    this.fromEmail =
+      this.configService.get<string>('RESEND_FROM_EMAIL') ||
+      'Techna <onboarding@resend.dev>';
 
-    if (!user || !pass) {
+    if (!apiKey) {
       this.logger.error(
-        'GMAIL_USER or GMAIL_APP_PASSWORD missing in .env — emails will not be sent',
+        'RESEND_API_KEY missing in .env — emails will not be sent',
       );
       return;
     }
 
-    this.transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user, pass },
-    });
-
-    this.transporter.verify((error) => {
-      if (error) {
-        this.logger.error('Gmail SMTP connection failed: ' + error.message);
-      } else {
-        this.logger.log('Gmail SMTP ready ✅');
-      }
-    });
+    this.resend = new Resend(apiKey);
   }
 
   async sendRegistrationEmail(payload: StudentEmailPayload): Promise<void> {
@@ -54,7 +44,6 @@ export class EmailService {
         '',
         'We have received your registration.',
         `Student Name: ${payload.name}`,
-        `Student ID: ${payload.studentId}`,
         '',
         'We will notify you once your registration status is updated.',
         '',
@@ -74,12 +63,8 @@ export class EmailService {
                 <td style="padding:10px;border:1px solid #ddd;font-weight:bold;">Student Name</td>
                 <td style="padding:10px;border:1px solid #ddd;">${this.escapeHtml(this.toTitleCase(payload.name))}</td>
               </tr>
-              <tr>
-                <td style="padding:10px;border:1px solid #ddd;font-weight:bold;">Student ID</td>
-                <td style="padding:10px;border:1px solid #ddd;">${this.escapeHtml(payload.studentId)}</td>
-              </tr>
             </table>
-            <p>We will notify you once your registration status is updated.</p>
+            <p>Your application is under review. We will notify you once your registration status is updated.</p>
             <p style="color:#666;font-size:13px;">Thank you for choosing Techna!</p>
           </div>
           <p style="text-align:center;color:#999;font-size:12px;margin-top:15px;">
@@ -373,41 +358,47 @@ export class EmailService {
       `No. 42, Main Street, Jaffna, Sri Lanka`,
     ].join('\n');
 
-    await this.sendStudentEmail({
-      to: payload.adminEmail,
-      from: `${payload.name} <${payload.email}>`,
-      replyTo: payload.email,
-      subject: `New Inquiry: ${payload.subject} — ${payload.name}`,
-      text,
-      html,
-    });
+    await this.sendStudentEmail(
+      {
+        to: payload.adminEmail,
+        replyTo: payload.email,
+        subject: `New Inquiry: ${payload.subject} — ${payload.name}`,
+        text,
+        html,
+      },
+      { throwOnFailure: true },
+    );
   }
 
-  private async sendStudentEmail(email: {
-    to: string;
-    subject: string;
-    text: string;
-    html: string;
-    from?: string;
-    replyTo?: string;
-  }): Promise<void> {
+  private async sendStudentEmail(
+    email: {
+      to: string;
+      subject: string;
+      text: string;
+      html: string;
+      from?: string;
+      replyTo?: string;
+    },
+    options: { throwOnFailure?: boolean } = {},
+  ): Promise<void> {
     if (!email.to?.trim()) {
-      this.logger.error(
-        `Cannot send "${email.subject}": recipient email is missing`,
-      );
+      const message = `Cannot send "${email.subject}": recipient email is missing`;
+      this.logger.error(message);
+      if (options.throwOnFailure) throw new Error(message);
       return;
     }
 
-    if (!this.transporter) {
-      this.logger.error(
+    if (!this.resend) {
+      const message =
         `Cannot send "${email.subject}" to ${email.to}: ` +
-          'Gmail SMTP not configured — check GMAIL_USER and GMAIL_APP_PASSWORD in .env',
-      );
+        'Resend not configured — check RESEND_API_KEY in .env';
+      this.logger.error(message);
+      if (options.throwOnFailure) throw new Error(message);
       return;
     }
 
     try {
-      const result = await this.transporter.sendMail({
+      const { data, error } = await this.resend.emails.send({
         from: email.from || this.fromEmail,
         to: email.to,
         subject: email.subject,
@@ -416,14 +407,23 @@ export class EmailService {
         ...(email.replyTo && { replyTo: email.replyTo }),
       });
 
+      if (error) {
+        this.logger.error(
+          `Resend error sending "${email.subject}" to ${email.to}: ${error.message}`,
+        );
+        if (options.throwOnFailure) throw new Error(error.message);
+        return;
+      }
+
       this.logger.log(
-        `Email "${email.subject}" sent to ${email.to} — ID: ${result.messageId}`,
+        `Email "${email.subject}" sent to ${email.to} — ID: ${data?.id}`,
       );
-    } catch (error) {
+    } catch (err) {
       this.logger.error(
         `Failed to send "${email.subject}" to ${email.to}`,
-        error instanceof Error ? error.stack : String(error),
+        err instanceof Error ? err.stack : String(err),
       );
+      if (options.throwOnFailure) throw err;
     }
   }
 

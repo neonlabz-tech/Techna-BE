@@ -12,14 +12,26 @@ export class CreatePaymentDto {
   @IsString()
   studentName?: string;
 
-  @ApiProperty({ example: '665f1b2c3d4e5f6789019999' })
+ 
+  @ApiPropertyOptional({ example: '665f1b2c3d4e5f6789019999' })
+  @IsOptional()
   @IsString()
-  moduleId!: string;
+  moduleId?: string;
 
   @ApiPropertyOptional({ example: 'Advanced ICT' })
   @IsOptional()
   @IsString()
   moduleName?: string;
+
+  
+  @ApiPropertyOptional({
+    enum: ['subject', 'admission', 'idcard'],
+    example: 'subject',
+    default: 'subject',
+  })
+  @IsOptional()
+  @IsIn(['subject', 'admission', 'idcard'])
+  feeType?: 'subject' | 'admission' | 'idcard';
 
   @ApiProperty({ example: 15000, minimum: 0 })
   @Type(() => Number)

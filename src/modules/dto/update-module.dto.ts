@@ -51,4 +51,20 @@ export class UpdateModuleDto {
   @IsOptional()
   @IsIn(['active', 'inactive'])
   status?: 'active' | 'inactive';
+
+  @ApiPropertyOptional({ example: 'Term 1' })
+  @IsOptional()
+  @IsString()
+  term?: string;
+
+  @ApiPropertyOptional({ example: 3 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  unit?: number;
+
+  @ApiPropertyOptional({ enum: ['main', 'basket', 'none'], example: 'none' })
+  @IsOptional()
+  @IsIn(['main', 'basket', 'none'])
+  subjectCategory?: 'main' | 'basket' | 'none';
 }

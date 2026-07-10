@@ -3,10 +3,12 @@ import {
   IsNumber,
   IsEnum,
   IsNotEmpty,
+  IsOptional,
   IsPositive,
+  IsIn,
   MinLength,
 } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateModuleDto {
   @ApiProperty({ example: 'Advanced ICT', minLength: 3 })
@@ -51,4 +53,19 @@ export class CreateModuleDto {
   @IsEnum(['active', 'inactive'], { message: 'Status must be either active or inactive' })
   @IsNotEmpty({ message: 'Status is required' })
   status!: 'active' | 'inactive';
+
+  @ApiPropertyOptional({ example: 'Term 1' })
+  @IsOptional()
+  @IsString()
+  term?: string;
+
+  @ApiPropertyOptional({ example: 3 })
+  @IsOptional()
+  @IsNumber()
+  unit?: number;
+
+  @ApiPropertyOptional({ enum: ['main', 'basket', 'none'], example: 'none' })
+  @IsOptional()
+  @IsIn(['main', 'basket', 'none'])
+  subjectCategory?: 'main' | 'basket' | 'none';
 }

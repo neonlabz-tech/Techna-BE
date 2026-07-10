@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_INTERCEPTOR } from '@nestjs/core';      // ← removed APP_GUARD import
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 
@@ -20,10 +20,12 @@ import { AuthModule } from './auth/auth.module';
 import { ContactModule } from './contact/contact.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+
 import { ResultsModule } from './results/results.module';
 import { AnnouncementsModule } from './announcements/announcements.module';
 
 // ← removed JwtAuthGuard and RolesGuard imports (no longer needed here)
+
 
 @Module({
   imports: [
@@ -60,8 +62,6 @@ import { AnnouncementsModule } from './announcements/announcements.module';
   providers: [
     AppService,
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
-    // ← REMOVED: { provide: APP_GUARD, useClass: JwtAuthGuard },
-    // ← REMOVED: { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
 export class AppModule {}

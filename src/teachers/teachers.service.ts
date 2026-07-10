@@ -16,8 +16,9 @@ export class TeachersService {
     private readonly storageService: StorageService,
   ) {}
 
-  async findAll() {
-    return this.teacherModel.find().select('-password').lean();
+  async findAll(status?: string) {
+    const filter = status ? { status } : {};
+    return this.teacherModel.find(filter).select('-password').lean();
   }
 
   async findOne(id: string) {
@@ -54,6 +55,26 @@ export class TeachersService {
     const teacher = await this.teacherModel.findByIdAndDelete(id).lean();
     if (!teacher) throw new NotFoundException('Teacher not found');
     return { message: 'Teacher deleted successfully' };
+  }
+
+  async removePhoto(id: string) {
+    const teacher = await this.teacherModel.findById(id);
+    if (!teacher) throw new NotFoundException('Teacher not found');
+
+    if (teacher.photoKey) {
+      try {
+        await this.storageService.deleteFile(teacher.photoKey);
+      } catch (e) {
+        console.error('[Teacher] Failed to delete photo from R2:', e);
+      }
+    }
+
+    teacher.photoUrl = undefined;
+    teacher.photoKey = undefined;
+    await teacher.save();
+
+    const { password, ...result } = teacher.toObject();
+    return result;
   }
 
   async uploadPhoto(id: string, file: Express.Multer.File) {
