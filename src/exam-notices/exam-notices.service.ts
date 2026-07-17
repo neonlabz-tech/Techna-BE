@@ -14,6 +14,7 @@ import {
   Result,
   ResultDocument,
 } from '../results/schemas/result.schema';
+import { getExamTypeDescription } from '../results/exam-types';
 
 @Injectable()
 export class ExamNoticesService {
@@ -229,6 +230,7 @@ export class ExamNoticesService {
       (doc.modules || []).map((m) => ({
         moduleName: m.moduleName,
         examType: m.examType as string,
+        examTypeDescription: getExamTypeDescription(m.examType as string),
         marks: m.marks,
         grade: m.grade as string,
         result: (m.grade !== 'F' ? 'pass' : 'fail') as string,
@@ -257,6 +259,7 @@ export class ExamNoticesService {
         title: exam.title,
         moduleName: exam.moduleName,
         examType: matched?.examType ?? null,
+        examTypeDescription: matched?.examTypeDescription ?? null,
         date: exam.date,
         venue: exam.venue,
         startTime: exam.startTime,
@@ -279,6 +282,7 @@ export class ExamNoticesService {
         title: r.examType,
         moduleName: r.moduleName,
         examType: r.examType,
+        examTypeDescription: r.examTypeDescription,
         date: null,
         venue: null,
         startTime: null,

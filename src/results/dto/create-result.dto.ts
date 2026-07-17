@@ -1,6 +1,6 @@
 import {
   IsArray,
-  IsEnum,
+  IsIn,
   IsNotEmpty,
   IsNumber,
   IsString,
@@ -9,14 +9,16 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { EXAM_TYPES } from '../exam-types';
+import type { ExamType } from '../exam-types';
 
 export class CreateModuleResultDto {
   @IsString()
   @IsNotEmpty()
   moduleName!: string;
 
-  @IsEnum(['Mid exam', 'Final exam'])
-  examType!: 'Mid exam' | 'Final exam';
+  @IsIn(EXAM_TYPES)
+  examType!: ExamType;
 
   @IsNumber()
   @Min(0)

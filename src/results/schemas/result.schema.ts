@@ -1,5 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { EXAM_TYPES } from '../exam-types';
+import type { ExamType } from '../exam-types';
 
 export type ResultDocument = HydratedDocument<Result>;
 
@@ -8,8 +10,8 @@ export class ModuleResult {
   @Prop({ required: true, trim: true })
   moduleName!: string;
 
-  @Prop({ required: true, enum: ['Mid exam', 'Final exam'] })
-  examType!: 'Mid exam' | 'Final exam';
+  @Prop({ type: String, required: true, enum: EXAM_TYPES })
+  examType!: ExamType;
 
   @Prop({ required: true, min: 0, max: 100 })
   marks!: number;
