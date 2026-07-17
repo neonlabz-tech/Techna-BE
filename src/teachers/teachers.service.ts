@@ -16,8 +16,9 @@ export class TeachersService {
     private readonly storageService: StorageService,
   ) {}
 
-  async findAll() {
-    return this.teacherModel.find().select('-password').lean();
+  async findAll(status?: string) {
+    const filter = status ? { status } : {};
+    return this.teacherModel.find(filter).select('-password').lean();
   }
 
   async findOne(id: string) {

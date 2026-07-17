@@ -60,11 +60,32 @@ export class PaymentsService {
   async create(data: CreatePaymentDto) {
     const paidDate = this.normalizeDate(data.paidDate);
     const paidMonth = this.getMonthKey(paidDate);
-
-    await this.ensureNoDuplicateMonthlyPayment(data.studentId, data.moduleId, paidMonth);
+    const feeType = data.feeType ?? 'subject';
 
     const student = await this.resolveStudent(data.studentId);
-    const module = await this.resolveModule(data.moduleId, data.moduleName);
+
+    let moduleId: string | undefined;
+    let moduleName: string;
+
+    if (feeType === 'subject') {
+      // Subjects keep the original rule: real Module record required, and
+      // only ONE payment allowed per (student, module, month).
+      if (!data.moduleId) {
+        throw new BadRequestException('moduleId is required for subject payments');
+      }
+      await this.ensureNoDuplicateMonthlyPayment(data.studentId, data.moduleId, paidMonth);
+      const module = await this.resolveModule(data.moduleId, data.moduleName);
+      moduleId = data.moduleId;
+      moduleName = data.moduleName?.trim() || module.name;
+    } else {
+      // Admission Fee / ID Card Fee: one-time fees, NOT subjects.
+      // No Module lookup, no moduleId, no monthly-uniqueness check — so
+      // they never collide with a subject's (student, module, month) slot.
+      moduleId = undefined;
+      moduleName =
+        data.moduleName?.trim() ||
+        (feeType === 'admission' ? 'Admission Fee' : 'ID Card Fee');
+    }
 
     const receiptNo = data.receiptNo?.trim() || (await this.generateUniqueReceiptNo());
     await this.ensureReceiptNoUnique(receiptNo);
@@ -73,8 +94,9 @@ export class PaymentsService {
       studentId: data.studentId,
       studentCode: student.studentId,
       studentName: data.studentName?.trim() || student.name,
-      moduleId: data.moduleId,
-      moduleName: data.moduleName?.trim() || module.name,
+      moduleId,
+      moduleName,
+      feeType,
       amount: data.amount,
       paidDate,
       method: data.method,
@@ -89,7 +111,7 @@ export class PaymentsService {
       void this.notificationsService.notifyPaymentConfirmed({
         studentId: data.studentId,
         studentName: data.studentName?.trim() || student.name,
-        moduleName: data.moduleName?.trim() || module.name,
+        moduleName,
         amount: data.amount,
         receiptNo,
         paidDate,
@@ -337,6 +359,7 @@ export class PaymentsService {
       studentName: payment.studentName,
       moduleId: payment.moduleId,
       moduleName: payment.moduleName,
+      feeType: payment.feeType,
       amount: payment.amount,
       paidDate: payment.paidDate,
       method: payment.method,

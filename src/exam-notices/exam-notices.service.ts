@@ -254,7 +254,7 @@ export class ExamNoticesService {
       );
       const matched = matchIdx >= 0 ? allModuleResults[matchIdx] : undefined;
       if (matchIdx >= 0) usedIndices.add(matchIdx);
-      return {
+            return {
         _id: exam._id,
         title: exam.title,
         moduleName: exam.moduleName,

@@ -1,3 +1,4 @@
+/// <reference types="multer" />
 import {
   Controller,
   Get,
@@ -6,6 +7,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   UploadedFile,
   UseInterceptors,
@@ -38,8 +40,8 @@ export class ModulesController {
 
   @Get()
   @Roles(Role.ADMIN, Role.TEACHER, Role.STUDENT)
-  findAll() {
-    return this.modulesService.findAll();
+  findAll(@Query('status') status?: string) {
+    return this.modulesService.findAll(status);
   }
 
   @Get('public')
@@ -88,6 +90,12 @@ export class ModulesController {
     @Body('title') title: string,
   ) {
     return this.modulesService.uploadResource(id, file, title);
+  }
+
+  @Post('sync-r2')
+  @Roles(Role.ADMIN)
+  syncResourcesWithR2() {
+    return this.modulesService.syncResourcesWithR2();
   }
 
   @Post(':id/add-resource-url')

@@ -1,14 +1,16 @@
+import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsDateString,
   IsIn,
   IsNotEmpty,
   IsNumber,
+  IsOptional,
   IsString,
   Max,
   Min,
   ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
 import { EXAM_TYPES } from '../exam-types';
 import type { ExamType } from '../exam-types';
 
@@ -30,6 +32,10 @@ export class CreateResultDto {
   @IsString()
   @IsNotEmpty()
   studentId!: string;
+
+  @IsOptional()
+  @IsDateString()
+  date?: string;
 
   @IsArray()
   @ValidateNested({ each: true })

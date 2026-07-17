@@ -239,4 +239,12 @@ export class StudentsController {
   generateStudentQrCode(@Param('studentId') studentId: string) {
     return this.studentsService.generateStudentQrCode(studentId);
   }
+
+  @Post('migrate-counters')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  migrateCounters() {
+    return this.studentsService.migrateCounters();
+  }
 }

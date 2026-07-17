@@ -10,7 +10,10 @@ import { CreateResultDto } from './dto/create-result.dto';
 import { UpdateResultDto } from './dto/update-result.dto';
 import { Result, ResultDocument } from './schemas/result.schema';
 import { getExamTypeDescription } from './exam-types';
-import { Student, StudentDocument } from '../students/schemas/student.schema';
+import {
+  Student,
+  StudentDocument,
+} from '../students/schemas/student.schema';
 
 type ResultModuleResponse = object & {
   examType?: string;
@@ -47,7 +50,9 @@ export class ResultsService {
 
     const modules = dto.modules.map((module) => {
       const isEnrolled = enrolledModules.some(
-        (m) => m.toLowerCase() === module.moduleName.trim().toLowerCase(),
+        (item) =>
+          item.toLowerCase() ===
+          module.moduleName.trim().toLowerCase(),
       );
 
       if (!isEnrolled) {
@@ -68,10 +73,10 @@ export class ResultsService {
       studentId: student.studentId,
       studentName:
         student.fullNameEnglish ||
-        student.fullNameEnglish ||
         student.email ||
         'Student',
       batch: student.batch || '',
+      date: dto.date ? new Date(dto.date) : new Date(),
       modules,
     });
 
@@ -83,7 +88,10 @@ export class ResultsService {
       .find()
       .sort({ createdAt: -1 })
       .lean();
-    return results.map((result) => this.withExamTypeDescriptions(result));
+
+    return results.map((result) =>
+      this.withExamTypeDescriptions(result),
+    );
   }
 
   async findOne(id: string) {
@@ -102,7 +110,9 @@ export class ResultsService {
       .sort({ createdAt: -1 })
       .lean();
 
-    return results.map((result) => this.withExamTypeDescriptions(result));
+    return results.map((result) =>
+      this.withExamTypeDescriptions(result),
+    );
   }
 
   async update(id: string, dto: UpdateResultDto) {
@@ -122,18 +132,19 @@ export class ResultsService {
       studentId = dto.studentId;
     }
 
-    const student = await this.studentModel.findOne({ studentId }).lean();
+    const student = await this.studentModel
+      .findOne({ studentId })
+      .lean();
 
     if (!student) {
       throw new NotFoundException('Student not found');
     }
 
-    const updatePayload: any = {};
+    const updatePayload: Record<string, unknown> = {};
 
     if (dto.studentId) {
       updatePayload.studentId = student.studentId;
       updatePayload.studentName =
-        student.fullNameEnglish ||
         student.fullNameEnglish ||
         student.email ||
         'Student';
@@ -145,7 +156,9 @@ export class ResultsService {
 
       updatePayload.modules = dto.modules.map((module) => {
         const isEnrolled = enrolledModules.some(
-          (m) => m.toLowerCase() === module.moduleName.trim().toLowerCase(),
+          (item) =>
+            item.toLowerCase() ===
+            module.moduleName.trim().toLowerCase(),
         );
 
         if (!isEnrolled) {
@@ -170,11 +183,15 @@ export class ResultsService {
       })
       .lean();
 
-    return updated ? this.withExamTypeDescriptions(updated) : updated;
+    return updated
+      ? this.withExamTypeDescriptions(updated)
+      : updated;
   }
 
   async remove(id: string) {
-    const deleted = await this.resultModel.findByIdAndDelete(id).lean();
+    const deleted = await this.resultModel
+      .findByIdAndDelete(id)
+      .lean();
 
     if (!deleted) {
       throw new NotFoundException('Result not found');
@@ -186,7 +203,9 @@ export class ResultsService {
   }
 
   async getStudentEnrolledModules(studentId: string) {
-    const student = await this.studentModel.findOne({ studentId }).lean();
+    const student = await this.studentModel
+      .findOne({ studentId })
+      .lean();
 
     if (!student) {
       throw new NotFoundException('Student not found');
@@ -196,7 +215,6 @@ export class ResultsService {
       studentId: student.studentId,
       studentName:
         student.fullNameEnglish ||
-        student.fullNameEnglish ||
         student.email ||
         'Student',
       batch: student.batch || '',
@@ -204,14 +222,19 @@ export class ResultsService {
     };
   }
 
-  private calculateGrade(marks: number): 'A' | 'B' | 'C' | 'F' {
+  private calculateGrade(
+    marks: number,
+  ): 'A' | 'B' | 'C' | 'F' {
     if (marks < 0 || marks > 100) {
-      throw new BadRequestException('Marks must be between 0 and 100');
+      throw new BadRequestException(
+        'Marks must be between 0 and 100',
+      );
     }
 
     if (marks >= 75) return 'A';
     if (marks >= 65) return 'B';
     if (marks >= 35) return 'C';
+
     return 'F';
   }
 
@@ -237,7 +260,9 @@ export class ResultsService {
     );
   }
 
-  private withExamTypeDescriptions<T extends ResultResponse>(result: T): T {
+  private withExamTypeDescriptions<T extends ResultResponse>(
+    result: T,
+  ): T {
     return {
       ...result,
       modules: (result.modules || []).map((module) => ({

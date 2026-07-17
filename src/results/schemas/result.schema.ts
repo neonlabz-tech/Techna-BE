@@ -10,17 +10,29 @@ export class ModuleResult {
   @Prop({ required: true, trim: true })
   moduleName!: string;
 
-  @Prop({ type: String, required: true, enum: EXAM_TYPES })
+  @Prop({
+    type: String,
+    required: true,
+    enum: EXAM_TYPES,
+  })
   examType!: ExamType;
 
-  @Prop({ required: true, min: 0, max: 100 })
+  @Prop({
+    required: true,
+    min: 0,
+    max: 100,
+  })
   marks!: number;
 
-  @Prop({ required: true, enum: ['A', 'B', 'C', 'F'] })
+  @Prop({
+    required: true,
+    enum: ['A', 'B', 'C', 'F'],
+  })
   grade!: 'A' | 'B' | 'C' | 'F';
 }
 
-export const ModuleResultSchema = SchemaFactory.createForClass(ModuleResult);
+export const ModuleResultSchema =
+  SchemaFactory.createForClass(ModuleResult);
 
 @Schema({ timestamps: true })
 export class Result {
@@ -33,8 +45,21 @@ export class Result {
   @Prop({ required: true, trim: true })
   batch!: string;
 
-  @Prop({ type: [ModuleResultSchema], default: [] })
+  @Prop({
+    type: Date,
+    required: true,
+    default: Date.now,
+  })
+  date!: Date;
+
+  @Prop({
+    type: [ModuleResultSchema],
+    default: [],
+  })
   modules!: ModuleResult[];
+
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export const ResultSchema = SchemaFactory.createForClass(Result);

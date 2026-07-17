@@ -14,11 +14,18 @@ export class Payment {
   @Prop({ required: true })
   studentName!: string;
 
-  @Prop({ required: true })
-  moduleId!: string;
+  // 'subject' payments only — Admission/ID Card fees are NOT subjects,
+  // so they don't get (or need) a real moduleId.
+  @Prop()
+  moduleId?: string;
 
   @Prop({ required: true })
   moduleName!: string;
+
+  // 'subject'   -> recurring, tracked monthly, unique per (student, moduleId, month)
+  // 'admission' | 'idcard' -> one-time fee, never treated as a subject
+  @Prop({ required: true, enum: ['subject', 'admission', 'idcard', 'handout', 'other'], default: 'subject' })
+  feeType!: 'subject' | 'admission' | 'idcard'| 'handout' | 'other';
 
   @Prop({ required: true, min: 0 })
   amount!: number;
@@ -29,11 +36,7 @@ export class Payment {
   @Prop({ required: true, enum: ['cash', 'bank', 'online'] })
   method!: 'cash' | 'bank' | 'online';
 
-  @Prop({
-    required: true,
-    enum: ['paid', 'pending', 'overdue'],
-    default: 'paid',
-  })
+  @Prop({ required: true, enum: ['paid', 'pending', 'overdue'], default: 'paid' })
   status!: 'paid' | 'pending' | 'overdue';
 
   @Prop({ required: true, unique: true })
