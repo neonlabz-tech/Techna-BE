@@ -24,8 +24,8 @@ export class Payment {
 
   // 'subject'   -> recurring, tracked monthly, unique per (student, moduleId, month)
   // 'admission' | 'idcard' -> one-time fee, never treated as a subject
-  @Prop({ required: true, enum: ['subject', 'admission', 'idcard'], default: 'subject' })
-  feeType!: 'subject' | 'admission' | 'idcard';
+  @Prop({ required: true, enum: ['subject', 'admission', 'idcard', 'handout', 'other'], default: 'subject' })
+  feeType!: 'subject' | 'admission' | 'idcard'| 'handout' | 'other';
 
   @Prop({ required: true, min: 0 })
   amount!: number;

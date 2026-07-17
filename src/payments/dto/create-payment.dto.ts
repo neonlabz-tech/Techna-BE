@@ -25,13 +25,13 @@ export class CreatePaymentDto {
 
   
   @ApiPropertyOptional({
-    enum: ['subject', 'admission', 'idcard'],
+    enum: ['subject', 'admission', 'idcard','handout', 'other'],
     example: 'subject',
     default: 'subject',
   })
   @IsOptional()
-  @IsIn(['subject', 'admission', 'idcard'])
-  feeType?: 'subject' | 'admission' | 'idcard';
+  @IsIn(['subject', 'admission', 'idcard','handout', 'other'])
+  feeType?: 'subject' | 'admission' | 'idcard'| 'handout' | 'other';
 
   @ApiProperty({ example: 15000, minimum: 0 })
   @Type(() => Number)
