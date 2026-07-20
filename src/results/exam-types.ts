@@ -2,6 +2,7 @@ export const EXAM_TYPES = [
   'Unit Examinations',
   'Practice Examinations',
   'Practical Examinations',
+  'Pilot Examinations',
   'Mid Examinations',
   'Final Examinations',
 ] as const;
@@ -15,6 +16,8 @@ export const EXAM_TYPE_DESCRIPTIONS: Record<ExamType, string> = {
     'Practice or mock assessments conducted to help students prepare for formal examinations.',
   'Practical Examinations':
     "Assessments used to evaluate the student's practical skills and hands-on knowledge.",
+  'Pilot Examinations':
+    'Trial assessments conducted before formal examinations to evaluate readiness and identify areas for improvement.',
   'Mid Examinations':
     "Assessments conducted in the middle of the course or semester to evaluate students' progress before the final examination.",
   'Final Examinations':
