@@ -17,6 +17,7 @@ import { StorageModule } from './storage/storage.module';
 import { StudentsModule } from './students/students.module';
 import { TeachersModule } from './teachers/teachers.module';
 import { AuthModule } from './auth/auth.module';
+import { AdminModule } from './admin/admin.module';
 import { ContactModule } from './contact/contact.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -52,6 +53,7 @@ import { AnnouncementsModule } from './announcements/announcements.module';
     DashboardModule,
     PaymentsModule,
     AuthModule,
+    AdminModule,
     ContactModule,
     StorageModule,
     ResultsModule,
