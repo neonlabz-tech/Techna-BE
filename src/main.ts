@@ -14,11 +14,28 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // CORS (safe for frontend + production flexible)
-  app.enableCors({
-    origin: '*',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    credentials: true,
-  });
+      const allowedOrigins = [
+        'https://admin-techna.vercel.app',
+        'https://techna.vercel.app',
+        'http://localhost:3000',
+        'http://localhost:3001',
+      ];
+
+      app.enableCors({
+        origin: (origin, callback) => {
+          if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+          } else {
+            callback(new Error('Not allowed by CORS'));
+          }
+        },
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+        credentials: true,
+        preflightContinue: false,
+        optionsSuccessStatus: 204,
+      });
+
 
   // Global Validation Pipe
   // CustomValidationPipe removed — it was blocking GET requests with "No data submitted"
