@@ -6,6 +6,7 @@ import { Model } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
 import { Role } from '../enums/role.enum';
 import { EmailService } from '../email/email.service';
+import { Admin, AdminDocument } from '../admin/schemas/admin.schema';
 
 @Injectable()
 export class AuthService {
@@ -14,25 +15,28 @@ export class AuthService {
     private configService: ConfigService,
     @InjectModel('Student') private studentModel: Model<any>,
     @InjectModel('Teacher') private teacherModel: Model<any>,
+    @InjectModel(Admin.name) private adminModel: Model<AdminDocument>,
     private readonly emailService: EmailService,
   ) {}
 
-  /**
-   * Unified login for Admin, Teacher, and Student.
-   * Admin credentials come from environment variables (not stored in DB).
-   * For students, checks that the account is approved before issuing a token.
-   */
+  
   async login(email: string, password: string) {
     const normalizedEmail = email.toLowerCase().trim();
 
-    // ── Admin check (env-based, no DB lookup needed) ──────────────────────
-    const adminEmail = this.configService.get<string>('ADMIN_EMAIL');
-    const adminPassword = this.configService.get<string>('ADMIN_PASSWORD');
+    // ── Admin check (DB-based) ─────────────────────────────────────────────
+    const admin = await this.adminModel
+      .findOne({ email: normalizedEmail, isActive: true })
+      .lean();
 
-    if (normalizedEmail === adminEmail && password === adminPassword) {
+    if (admin) {
+      const isAdminMatch = await bcrypt.compare(password, admin.password);
+      if (!isAdminMatch) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
       const token = this.jwtService.sign({
-        sub: 'admin',
-        email: normalizedEmail,
+        sub: admin._id,
+        email: admin.email,
         role: Role.ADMIN,
       });
       return { access_token: token, role: Role.ADMIN };

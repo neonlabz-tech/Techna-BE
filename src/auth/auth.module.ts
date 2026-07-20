@@ -8,6 +8,7 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { Student, StudentSchema } from '../students/schemas/student.schema';
 import { Teacher, TeacherSchema } from '../teachers/schemas/teacher.schema';
+import { Admin, AdminSchema } from '../admin/schemas/admin.schema';
 import { EmailModule } from '../email/email.module';
 
 @Module({
@@ -27,6 +28,7 @@ import { EmailModule } from '../email/email.module';
     MongooseModule.forFeature([
       { name: Student.name, schema: StudentSchema },
       { name: Teacher.name, schema: TeacherSchema },
+      { name: Admin.name, schema: AdminSchema },
     ]),
   ],
   controllers: [AuthController],
