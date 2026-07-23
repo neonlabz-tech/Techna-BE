@@ -5,7 +5,6 @@ import { AppModule } from './app.module';
 import { HttpExceptionFilter, AllExceptionsFilter } from './common/filters';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
-
 // DNS config (helps with MongoDB / network resolution issues)
 dns.setServers(['8.8.8.8', '8.8.4.4']);
 dns.setDefaultResultOrder('ipv4first');
@@ -14,36 +13,37 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // CORS (safe for frontend + production flexible)
-      const allowedOrigins = [
-        'https://admin-techna.vercel.app',
-        'https://techna.vercel.app',
-        'http://localhost:3000',
-        'http://localhost:3001',
-      ];
+  const allowedOrigins = [
+    'https://www.techna.lk',
+    'https://admin.techna.lk',
+    'https://admin-techna.vercel.app',
+    'https://techna.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:3001',
+  ];
 
-      app.enableCors({
-        origin: (origin, callback) => {
-          if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-          } else {
-            callback(new Error('Not allowed by CORS'));
-          }
-        },
-        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-        credentials: true,
-        preflightContinue: false,
-        optionsSuccessStatus: 204,
-      });
-
+  app.enableCors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+  });
 
   // Global Validation Pipe
   // CustomValidationPipe removed — it was blocking GET requests with "No data submitted"
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,             
-      forbidNonWhitelisted: true,  
-      transform: true,             
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
     }),
   );
 
