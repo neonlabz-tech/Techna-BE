@@ -3,7 +3,6 @@ import {
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { EmailService } from '../email/email.service';
 import { CreateContactDto } from './dto/create-contact.dto';
 
@@ -13,18 +12,10 @@ export class ContactService {
 
   constructor(
     private readonly emailService: EmailService,
-    private readonly configService: ConfigService,
   ) {}
 
   async sendContactMessage(dto: CreateContactDto): Promise<void> {
-    const recipientEmail = this.configService.get<string>('ADMIN_EMAIL');
-
-    if (!recipientEmail) {
-      this.logger.error('ADMIN_EMAIL not configured in .env');
-      throw new InternalServerErrorException(
-        'Recipient email is not configured',
-      );
-    }
+    const recipientEmail = 'support@techna.lk';
 
     try {
       await this.emailService.sendContactEmail({
