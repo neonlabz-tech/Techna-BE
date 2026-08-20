@@ -695,8 +695,8 @@ export class StudentsService {
       },
     );
 
-    const seq = String(counter.seq).padStart(3, '0');
-    return `${initials}-${cleanBatch}-${seq}`;
+    const seq = String(counter.seq).padStart(2, '0');
+    return `${initials}-${seq}-${cleanBatch}`;
   }
 
   
@@ -744,7 +744,7 @@ export class StudentsService {
     }
 
     const padded = String(counter.seq).padStart(4, '0');
-    return `${prefix}-${year}-${padded}`;
+    return `${prefix}-${padded}-${year}`;
   }
 
   private async findStudentByIdOrStudentId(
