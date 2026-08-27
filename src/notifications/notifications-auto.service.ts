@@ -295,7 +295,7 @@ export class NotificationsAutoService implements OnModuleInit {
       readBy: { $ne: studentId },
     };
     if (batch) {
-      filter.$or.push({ target: batch }, { batch });
+      filter.$or.push({ target: batch });
     }
     return this.notificationModel.countDocuments(filter);
   }

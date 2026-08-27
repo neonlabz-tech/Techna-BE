@@ -345,6 +345,7 @@ export class ModulesService {
             thumbnailUrl: dto.thumbnailUrl,
             fileType: dto.fileType ?? 'video',
             description: dto.description,
+            batch: dto.batch.trim(),
             uploadedAt: new Date(),
             isPublished: dto.isPublished ?? false,
           },
