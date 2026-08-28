@@ -47,6 +47,7 @@ export class Module {
       url: String,
       thumbnailUrl: String,
       description: String,
+      batch: String,
       uploadedAt: Date,
       isPublished: { type: Boolean, default: false },
     },
@@ -59,6 +60,7 @@ export class Module {
     url?: string;
     thumbnailUrl?: string;
     description?: string;
+    batch?: string;
     uploadedAt?: Date;
     isPublished?: boolean;
   }[];

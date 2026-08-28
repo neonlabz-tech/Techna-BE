@@ -331,7 +331,7 @@ export class NotificationsService {
       $or: [
         { target: 'all' },
         { target: studentId },
-        ...(studentBatch ? [{ target: studentBatch }, { batch: studentBatch }] : []),
+        ...(studentBatch ? [{ target: studentBatch }] : []),
       ],
     };
 

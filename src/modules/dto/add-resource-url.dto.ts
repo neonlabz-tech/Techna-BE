@@ -22,6 +22,10 @@ export class AddResourceUrlDto {
   @IsOptional()
   description?: string;
 
+  @IsString()
+  @IsNotEmpty()
+  batch!: string;
+
   @IsBoolean()
   @IsOptional()
   isPublished?: boolean = false;
